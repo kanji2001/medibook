@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useRef, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/layout/Navbar';
@@ -12,6 +12,13 @@ import type { AppointmentResponse } from '@/services/appointmentApi';
 import { doctorService } from '@/services/api';
 import useAuthStore, { Availability } from '@/stores/authStore';
 import type { AuthUser } from '@/stores/authStore';
+import DoctorPatientsPanel from '@/components/doctor/dashboard/DoctorPatientsPanel';
+import DoctorMessagesPanel from '@/components/doctor/dashboard/DoctorMessagesPanel';
+import DoctorEarningsPanel from '@/components/doctor/dashboard/DoctorEarningsPanel';
+import DoctorProfilePanel, {
+  DoctorProfileFormPayload,
+  DoctorProfileFormValues,
+} from '@/components/doctor/dashboard/DoctorProfilePanel';
 
 const DEFAULT_AVAILABILITY: Availability = {
   status: 'available',
@@ -50,22 +57,6 @@ interface DoctorProfile {
   specializations: string[];
   insurances: string[];
   avatar?: string;
-  image?: string;
-}
-
-interface DoctorProfileUpdatePayload {
-  name: string;
-  avatar?: string;
-  phone?: string;
-  specialty: string;
-  experience: number;
-  location: string;
-  address: string;
-  about: string;
-  education: string[];
-  languages: string[];
-  specializations: string[];
-  insurances: string[];
   image?: string;
 }
 
@@ -133,6 +124,23 @@ const createFallbackProfile = (user: AuthUser | null): DoctorProfile | null => {
   };
 };
 
+const profileToFormValues = (profile: DoctorProfile): DoctorProfileFormValues => ({
+  name: profile.name,
+  email: profile.email,
+  phone: profile.phone ?? '',
+  specialty: profile.specialty ?? '',
+  experience: profile.experience != null ? String(profile.experience) : '0',
+  location: profile.location ?? '',
+  address: profile.address ?? '',
+  about: profile.about ?? '',
+  education: (profile.education ?? []).join(', '),
+  languages: (profile.languages ?? []).join(', '),
+  specializations: (profile.specializations ?? []).join(', '),
+  insurances: (profile.insurances ?? []).join(', '),
+  avatar: profile.avatar ?? '',
+  image: profile.image ?? '',
+});
+
 const DoctorDashboard = () => {
   const { user, updateUserAvailability } = useAuth();
   const { toast } = useToast();
@@ -156,7 +164,9 @@ const DoctorDashboard = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!user?.doctorId) {
+    if (!user) return;
+
+    if (!user.doctorId) {
       setDoctorProfile(createFallbackProfile(user));
       return;
     }
@@ -184,7 +194,13 @@ const DoctorDashboard = () => {
         setDoctorProfile(createFallbackProfile(user));
       })
       .finally(() => setProfileLoading(false));
-  }, [user?.doctorId, user?.name, user?.email, user?.phone, user?.avatar, toast]);
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user && !doctorProfile) {
+      setDoctorProfile(createFallbackProfile(user));
+    }
+  }, [user, doctorProfile]);
 
   const hasFetchedAppointmentsRef = useRef(false);
 
@@ -258,7 +274,7 @@ const DoctorDashboard = () => {
     );
   }, [doctorAppointments]);
 
-  const handleProfileSave = async (updates: DoctorProfileUpdatePayload) => {
+  const handleProfileSave = async (updates: DoctorProfileFormPayload) => {
     setProfileSaving(true);
     try {
       const updated = await doctorService.updateProfile(updates);
@@ -287,6 +303,11 @@ const DoctorDashboard = () => {
     }
   };
 
+  const profileFormValues = useMemo(
+    () => (doctorProfile ? profileToFormValues(doctorProfile) : null),
+    [doctorProfile],
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'appointments':
@@ -299,15 +320,15 @@ const DoctorDashboard = () => {
           />
         );
       case 'patients':
-        return <PatientsPanel patients={patientsSummary} />;
+        return <DoctorPatientsPanel patients={patientsSummary} />;
       case 'messages':
-        return <MessagesPanel />;
+        return <DoctorMessagesPanel />;
       case 'earnings':
-        return <EarningsPanel summary={earningsSummary} />;
+        return <DoctorEarningsPanel summary={earningsSummary} />;
       case 'settings':
         return (
-          <SettingsPanel
-            profile={doctorProfile}
+          <DoctorProfilePanel
+            profile={profileFormValues}
             loading={profileLoading}
             saving={profileSaving}
             onSave={handleProfileSave}
@@ -346,438 +367,3 @@ const DoctorDashboard = () => {
 };
 
 export default DoctorDashboard;
-
-interface PatientsPanelProps {
-  patients: AppointmentResponse[];
-}
-
-const PatientsPanel = ({ patients }: PatientsPanelProps) => {
-  if (!patients.length) {
-    return (
-      <div className="glass-card rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-2">No patients yet</h2>
-        <p className="text-muted-foreground text-sm">
-          Once appointments are booked, you’ll see a list of unique patients here.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Patients</h2>
-        <span className="text-sm text-muted-foreground">{patients.length} total</span>
-      </div>
-      <div className="glass-card rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-secondary/40">
-            <tr className="text-left text-sm text-muted-foreground">
-              <th className="py-3 px-4 font-medium">Patient</th>
-              <th className="py-3 px-4 font-medium">Email</th>
-              <th className="py-3 px-4 font-medium">Phone</th>
-              <th className="py-3 px-4 font-medium">Last Visit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {patients.map(patient => (
-              <tr key={patient.patientEmail} className="border-t border-border">
-                <td className="py-3 px-4 font-medium">{patient.patientName}</td>
-                <td className="py-3 px-4 text-sm text-muted-foreground">{patient.patientEmail}</td>
-                <td className="py-3 px-4 text-sm text-muted-foreground">{patient.patientPhone || '—'}</td>
-                <td className="py-3 px-4 text-sm text-muted-foreground">
-                  {patient.date
-                    ? new Date(patient.date).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
-                    : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const MessagesPanel = () => (
-  <div className="glass-card rounded-xl p-6 space-y-3">
-    <h2 className="text-xl font-semibold">Messages</h2>
-    <p className="text-sm text-muted-foreground">
-      Messaging tools are coming soon. For now, you can contact patients using the email and phone
-      details in your appointments.
-    </p>
-  </div>
-);
-
-interface EarningsPanelProps {
-  summary: {
-    totalBookings: number;
-    confirmed: number;
-    pending: number;
-    cancelled: number;
-    totalRevenue: number;
-  };
-}
-
-const EarningsPanel = ({ summary }: EarningsPanelProps) => (
-  <div className="space-y-4">
-    <h2 className="text-xl font-semibold">Earnings Overview</h2>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard title="Total Bookings" value={summary.totalBookings} />
-      <StatCard title="Confirmed" value={summary.confirmed} />
-      <StatCard title="Pending" value={summary.pending} />
-      <StatCard title="Cancelled" value={summary.cancelled} />
-    </div>
-    <div className="glass-card rounded-xl p-6">
-      <h3 className="text-lg font-semibold">Estimated Revenue</h3>
-      <p className="text-2xl font-bold mt-2">
-        ${summary.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-      </p>
-      <p className="text-sm text-muted-foreground mt-1">
-        Revenue is calculated from appointment amounts that include payment information.
-      </p>
-    </div>
-  </div>
-);
-
-const StatCard = ({ title, value }: { title: string; value: number }) => (
-  <div className="glass-card rounded-xl p-5">
-    <p className="text-sm text-muted-foreground">{title}</p>
-    <p className="text-2xl font-semibold mt-1">{value}</p>
-  </div>
-);
-
-interface SettingsPanelProps {
-  profile: DoctorProfile | null;
-  loading: boolean;
-  saving: boolean;
-  onSave: (updates: DoctorProfileUpdatePayload) => Promise<void>;
-}
-
-interface DoctorProfileFormState {
-  name: string;
-  email: string;
-  phone: string;
-  specialty: string;
-  experience: string;
-  location: string;
-  address: string;
-  about: string;
-  education: string;
-  languages: string;
-  specializations: string;
-  insurances: string;
-  avatar: string;
-  image: string;
-}
-
-const SettingsPanel = ({ profile, loading, saving, onSave }: SettingsPanelProps) => {
-  const [formValues, setFormValues] = useState<DoctorProfileFormState>({
-    name: '',
-    email: '',
-    phone: '',
-    specialty: '',
-    experience: '',
-    location: '',
-    address: '',
-    about: '',
-    education: '',
-    languages: '',
-    specializations: '',
-    insurances: '',
-    avatar: '',
-    image: '',
-  });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!profile) return;
-    setFormValues({
-      name: profile.name,
-      email: profile.email,
-      phone: profile.phone ?? '',
-      specialty: profile.specialty ?? '',
-      experience: String(profile.experience ?? 0),
-      location: profile.location ?? '',
-      address: profile.address ?? '',
-      about: profile.about ?? '',
-      education: (profile.education ?? []).join(', '),
-      languages: (profile.languages ?? []).join(', '),
-      specializations: (profile.specializations ?? []).join(', '),
-      insurances: (profile.insurances ?? []).join(', '),
-      avatar: profile.avatar ?? '',
-      image: profile.image ?? '',
-    });
-    setErrorMessage(null);
-    setSuccessMessage(null);
-  }, [profile]);
-
-  const splitList = (value: string) =>
-    value
-      .split(',')
-      .map(item => item.trim())
-      .filter(Boolean);
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = event.target;
-    setFormValues(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    const payload: DoctorProfileUpdatePayload = {
-      name: formValues.name.trim(),
-      avatar: formValues.avatar.trim() || undefined,
-      phone: formValues.phone.trim() || undefined,
-      specialty: formValues.specialty.trim(),
-      experience: Number(formValues.experience) || 0,
-      location: formValues.location.trim(),
-      address: formValues.address.trim(),
-      about: formValues.about.trim(),
-      education: splitList(formValues.education),
-      languages: splitList(formValues.languages),
-      specializations: splitList(formValues.specializations),
-      insurances: splitList(formValues.insurances),
-      image: formValues.image.trim() || undefined,
-    };
-
-    try {
-      await onSave(payload);
-      setSuccessMessage('Profile updated successfully.');
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Failed to update profile. Please try again.');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="glass-card rounded-xl p-6 flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="mt-3 text-sm text-muted-foreground">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="glass-card rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-2">Profile & Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          We couldn&apos;t load your profile details right now. Please try refreshing the page.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="glass-card rounded-xl p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Profile & Settings</h2>
-          <p className="text-sm text-muted-foreground">
-            Keep your practice details up to date. These details appear to patients when they view your
-            profile.
-          </p>
-        </div>
-        {(formValues.avatar || profile.avatar) && (
-          <img
-            src={formValues.avatar || profile.avatar}
-            alt={profile.name}
-            className="h-20 w-20 rounded-full border border-border object-cover"
-          />
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Full Name</span>
-            <input
-              type="text"
-              name="name"
-              value={formValues.name}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              required
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Email</span>
-            <input
-              type="email"
-              name="email"
-              value={formValues.email}
-              readOnly
-              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-muted-foreground"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Phone</span>
-            <input
-              type="tel"
-              name="phone"
-              value={formValues.phone}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="(555) 123-4567"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Specialty</span>
-            <input
-              type="text"
-              name="specialty"
-              value={formValues.specialty}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              required
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Years of Experience</span>
-            <input
-              type="number"
-              min="0"
-              name="experience"
-              value={formValues.experience}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Practice Location</span>
-            <input
-              type="text"
-              name="location"
-              value={formValues.location}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </label>
-        </div>
-
-        <label className="space-y-1 text-sm block">
-          <span className="font-medium">Clinic Address</span>
-          <input
-            type="text"
-            name="address"
-            value={formValues.address}
-            onChange={handleChange}
-            className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm block">
-          <span className="font-medium">About</span>
-          <textarea
-            name="about"
-            value={formValues.about}
-            onChange={handleChange}
-            className="w-full min-h-[120px] rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            placeholder="Describe your background, specialties, and approach to patient care."
-          />
-        </label>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Education</span>
-            <textarea
-              name="education"
-              value={formValues.education}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="Separate entries with commas"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Languages</span>
-            <input
-              type="text"
-              name="languages"
-              value={formValues.languages}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="English, Spanish"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Specializations</span>
-            <input
-              type="text"
-              name="specializations"
-              value={formValues.specializations}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="Cardiac Imaging, Heart Failure"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Insurances Accepted</span>
-            <input
-              type="text"
-              name="insurances"
-              value={formValues.insurances}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="Aetna, Blue Cross, Cigna"
-            />
-          </label>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Profile Image URL</span>
-            <input
-              type="url"
-              name="avatar"
-              value={formValues.avatar}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="https://..."
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Cover Image URL</span>
-            <input
-              type="url"
-              name="image"
-              value={formValues.image}
-              onChange={handleChange}
-              className="w-full rounded-md border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="https://..."
-            />
-          </label>
-        </div>
-
-        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
-        {successMessage && <p className="text-sm text-green-600">{successMessage}</p>}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            className="btn-primary px-4 py-2 text-sm"
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Changes are saved instantly and visible to patients.
-          </span>
-        </div>
-      </form>
-    </div>
-  );
-};
