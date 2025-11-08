@@ -1,11 +1,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { 
+const {
   getDoctors,
   getDoctor,
   updateAvailability,
-  getDoctorAvailability
+  updateDoctorProfile,
+  getDoctorAvailability,
 } = require('../controllers/doctors');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -16,5 +17,6 @@ router.get('/:id/availability', getDoctorAvailability);
 
 // Protected routes - require doctor role
 router.put('/availability', protect, authorize('doctor'), updateAvailability);
+router.put('/profile', protect, authorize('doctor'), updateDoctorProfile);
 
 module.exports = router;

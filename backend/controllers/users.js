@@ -21,8 +21,9 @@ exports.getUserProfile = async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.avatar,
-      phone: user.phone
+    avatar: user.avatar,
+    phone: user.phone,
+    bio: user.bio
     };
 
     // If user is a doctor, include doctor profile

@@ -111,6 +111,23 @@ exports.getDoctor = async (req, res, next) => {
   }
 };
 
+const normalizeToArray = value => {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : item))
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 // @desc    Update doctor availability
 // @route   PUT /api/doctors/availability
 // @access  Private (Doctor only)
@@ -133,6 +150,98 @@ exports.updateAvailability = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: doctor.availability
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update doctor profile
+// @route   PUT /api/doctors/profile
+// @access  Private (Doctor only)
+exports.updateDoctorProfile = async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ user: req.user.id });
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor profile not found',
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const {
+      name,
+      avatar,
+      phone,
+      specialty,
+      experience,
+      location,
+      address,
+      about,
+      education,
+      languages,
+      specializations,
+      insurances,
+      image,
+    } = req.body;
+
+    if (name) user.name = name;
+    if (avatar) user.avatar = avatar;
+    if (phone) user.phone = phone;
+    if (specialty) user.specialty = specialty;
+    if (about) user.bio = about;
+
+    await user.save();
+
+    if (specialty !== undefined) doctor.specialty = specialty;
+    if (experience !== undefined) {
+      const parsedExperience = Number(experience);
+      if (!Number.isNaN(parsedExperience)) {
+        doctor.experience = parsedExperience;
+      }
+    }
+    if (location !== undefined) doctor.location = location;
+    if (address !== undefined) doctor.address = address;
+    if (phone !== undefined) doctor.phone = phone;
+    if (about !== undefined) doctor.about = about;
+    if (image !== undefined) doctor.image = image;
+
+    if (education !== undefined) doctor.education = normalizeToArray(education);
+    if (languages !== undefined) doctor.languages = normalizeToArray(languages);
+    if (specializations !== undefined) doctor.specializations = normalizeToArray(specializations);
+    if (insurances !== undefined) doctor.insurances = normalizeToArray(insurances);
+
+    await doctor.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: doctor._id,
+        userId: doctor.user,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        phone: user.phone,
+        specialty: doctor.specialty,
+        experience: doctor.experience,
+        location: doctor.location,
+        address: doctor.address,
+        about: doctor.about,
+        education: doctor.education,
+        languages: doctor.languages,
+        specializations: doctor.specializations,
+        insurances: doctor.insurances,
+        image: doctor.image,
+      },
     });
   } catch (error) {
     next(error);

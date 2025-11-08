@@ -110,7 +110,17 @@ export const doctorService = {
       params: { date }
     });
     return response.data;
-  }
+  },
+
+  updateAvailability: async (availability: any) => {
+    const response = await api.put('/doctors/availability', availability);
+    return response.data?.data ?? response.data;
+  },
+
+  updateProfile: async (profileData: any) => {
+    const response = await api.put('/doctors/profile', profileData);
+    return response.data?.data ?? response.data;
+  },
 };
 
 // Temporary function exports for compatibility

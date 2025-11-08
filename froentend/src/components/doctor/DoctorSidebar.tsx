@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 interface DoctorSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  specialty?: string;
 }
 
-const DoctorSidebar = ({ activeTab, setActiveTab }: DoctorSidebarProps) => {
+const DoctorSidebar = ({ activeTab, setActiveTab, specialty }: DoctorSidebarProps) => {
   const { user, logout } = useAuth();
 
   const navItems: Array<{
@@ -36,7 +37,9 @@ const DoctorSidebar = ({ activeTab, setActiveTab }: DoctorSidebarProps) => {
             />
           </div>
           <h3 className="font-semibold text-lg">{user?.name}</h3>
-          <p className="text-sm text-muted-foreground mb-4">Cardiologist</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {specialty || user?.specialty || 'Doctor'}
+          </p>
           <button 
             onClick={logout}
             className="btn-outline w-full text-sm py-1.5"

@@ -20,6 +20,10 @@ export interface AuthUser {
   role: UserRole;
   avatar?: string;
   availability?: Availability;
+  doctorId?: string;
+  phone?: string;
+  specialty?: string;
+  bio?: string;
 }
 
 interface AuthState {
@@ -65,6 +69,10 @@ const fetchCurrentUser = async (): Promise<AuthUser | null> => {
       email: profile.email,
       role: profile.role,
       avatar: profile.avatar,
+      phone: profile.phone,
+      doctorId: profile.doctorId,
+      specialty: profile.specialty,
+    bio: profile.bio,
       availability: profile.availability,
     };
   } catch (error) {
