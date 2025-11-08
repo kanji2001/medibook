@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, User, Phone, Mail, CheckCircle, X, AlertTriangle } from 'lucide-react';
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
@@ -21,23 +21,18 @@ const AppointmentList: React.FC = () => {
     updateAppointmentStatus: state.updateAppointmentStatus,
   }));
 
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        await fetchDoctorAppointments();
-      } catch (error: any) {
-        toast({
-          title: 'Error',
-          description: error?.message || 'Failed to load appointments. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    load();
-
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchDoctorAppointments().catch(error => {
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to load appointments. Please try again.',
+        variant: 'destructive',
+      });
+    });
   }, [fetchDoctorAppointments, toast]);
 
   const handleApprove = async (appointmentId: string) => {

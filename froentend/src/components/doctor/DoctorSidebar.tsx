@@ -1,6 +1,5 @@
 
-import { Link } from 'react-router-dom';
-import { Calendar, Clock, User, FileText, MessageSquare, Settings, Wallet } from 'lucide-react';
+import { Calendar, Clock, Users, MessageSquare, Settings, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface DoctorSidebarProps {
@@ -10,6 +9,19 @@ interface DoctorSidebarProps {
 
 const DoctorSidebar = ({ activeTab, setActiveTab }: DoctorSidebarProps) => {
   const { user, logout } = useAuth();
+
+  const navItems: Array<{
+    key: string;
+    label: string;
+    icon: typeof Calendar;
+  }> = [
+    { key: 'appointments', label: 'Appointments', icon: Calendar },
+    { key: 'availability', label: 'Availability', icon: Clock },
+    { key: 'patients', label: 'Patients', icon: Users },
+    { key: 'messages', label: 'Messages', icon: MessageSquare },
+    { key: 'earnings', label: 'Earnings', icon: Wallet },
+    { key: 'settings', label: 'Settings', icon: Settings },
+  ];
 
   return (
     <div className="lg:w-64 shrink-0">
@@ -36,44 +48,24 @@ const DoctorSidebar = ({ activeTab, setActiveTab }: DoctorSidebarProps) => {
         {/* Navigation */}
         <div className="glass-card rounded-xl overflow-hidden">
           <nav className="text-sm">
-            <button 
-              onClick={() => setActiveTab('appointments')}
-              className={`w-full text-left flex items-center py-3 px-4 ${
-                activeTab === 'appointments' 
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary' 
-                  : 'hover:bg-secondary transition-colors'
-              }`}
-            >
-              <Calendar className="w-4 h-4 mr-3" />
-              Appointments
-            </button>
-            <button 
-              onClick={() => setActiveTab('availability')}
-              className={`w-full text-left flex items-center py-3 px-4 ${
-                activeTab === 'availability' 
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary' 
-                  : 'hover:bg-secondary transition-colors'
-              }`}
-            >
-              <Clock className="w-4 h-4 mr-3" />
-              Availability
-            </button>
-            <Link to="#" className="flex items-center py-3 px-4 hover:bg-secondary transition-colors">
-              <FileText className="w-4 h-4 mr-3" />
-              Patients
-            </Link>
-            <Link to="#" className="flex items-center py-3 px-4 hover:bg-secondary transition-colors">
-              <MessageSquare className="w-4 h-4 mr-3" />
-              Messages
-            </Link>
-            <Link to="#" className="flex items-center py-3 px-4 hover:bg-secondary transition-colors">
-              <Wallet className="w-4 h-4 mr-3" />
-              Earnings
-            </Link>
-            <Link to="#" className="flex items-center py-3 px-4 hover:bg-secondary transition-colors">
-              <Settings className="w-4 h-4 mr-3" />
-              Settings
-            </Link>
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`w-full text-left flex items-center py-3 px-4 transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                      : 'hover:bg-secondary'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-3" />
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>
