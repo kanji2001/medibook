@@ -8,7 +8,8 @@ const {
   updateAppointmentStatus,
   getAppointment,
   processPayment,
-  getPaymentStatus
+  getPaymentStatus,
+  downloadPaymentReceipt
 } = require('../controllers/appointments');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -18,6 +19,7 @@ router.use(protect);
 router.post('/', createAppointment);
 router.get('/user', getUserAppointments);
 router.get('/doctor', authorize('doctor'), getDoctorAppointments);
+router.get('/:id/receipt', downloadPaymentReceipt);
 router.get('/:id', getAppointment);
 router.put('/status/:id', authorize('doctor'), updateAppointmentStatus);
 router.post('/:id/pay', processPayment);

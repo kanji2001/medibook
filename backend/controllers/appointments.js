@@ -321,56 +321,98 @@ exports.updateAppointmentStatus = async (req, res, next) => {
   }
 };
 
+const ONLINE_PAYMENT_METHODS = new Set(['online', 'gpay', 'paytm', 'phonepe', 'card']);
+
 // @desc    Process payment for an appointment
 // @route   POST /api/appointments/:id/pay
 // @access  Private (Patient only)
 exports.processPayment = async (req, res, next) => {
   try {
-    const { paymentMethod } = req.body;
+    const { paymentMethod, amount, currency, razorpay, verification, order } = req.body;
     const appointmentId = req.params.id;
-    
+
     if (!['online', 'offline', 'gpay', 'paytm', 'phonepe', 'card'].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid payment method'
+        message: 'Invalid payment method',
       });
     }
-    
+
     const appointment = await Appointment.findById(appointmentId).populate({
       path: 'doctorId',
-      select: 'user specialty',
-      populate: { path: 'user', select: 'name' }
+      select: 'user specialty location',
+      populate: { path: 'user', select: 'name email' },
     });
-    
+
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        message: 'Appointment not found'
+        message: 'Appointment not found',
       });
     }
-    
+
     // Check if the appointment belongs to the user
     if (appointment.userId.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to process payment for this appointment'
+        message: 'Not authorized to process payment for this appointment',
       });
     }
-    
-    // Set standard consultation fee
-    const amount = 4999; // $49.99
-    
-    // Update appointment with payment
-    appointment.paymentMethod = paymentMethod;
-    appointment.amount = amount;
-    appointment.paymentStatus = 'completed';
-    appointment.status = 'confirmed'; // Automatically confirm after payment
-    
+
+    const now = new Date();
+    const normalizedAmount = Number.isFinite(Number(amount)) ? Number(amount) : appointment.amount || 4999;
+    const normalizedCurrency = typeof currency === 'string' && currency.trim() ? currency.trim().toUpperCase() : 'INR';
+    const isOnlinePayment = ONLINE_PAYMENT_METHODS.has(paymentMethod);
+
+    if (isOnlinePayment) {
+      if (!razorpay?.paymentId || !razorpay?.orderId || !razorpay?.signature) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing Razorpay payment details.',
+        });
+      }
+
+      appointment.paymentGateway = 'razorpay';
+      appointment.paymentStatus = 'completed';
+      appointment.status = 'confirmed';
+      appointment.amount = normalizedAmount;
+      appointment.paymentMethod = paymentMethod;
+      appointment.razorpayOrderId = razorpay.orderId;
+      appointment.razorpayPaymentId = razorpay.paymentId;
+      appointment.razorpaySignature = razorpay.signature;
+      appointment.paymentInitiatedAt = appointment.paymentInitiatedAt || now;
+      appointment.paymentCapturedAt = now;
+      appointment.paymentMeta = {
+        ...(appointment.paymentMeta || {}),
+        razorpay: {
+          ...(appointment.paymentMeta?.razorpay || {}),
+          order,
+          currency: normalizedCurrency,
+          ...razorpay,
+        },
+        verification,
+      };
+    } else if (paymentMethod === 'offline') {
+      appointment.paymentGateway = null;
+      appointment.paymentStatus = 'pending';
+      appointment.status = 'booked';
+      appointment.amount = normalizedAmount;
+      appointment.paymentMethod = paymentMethod;
+      appointment.paymentInitiatedAt = appointment.paymentInitiatedAt || now;
+    } else {
+      appointment.paymentGateway = null;
+      appointment.paymentStatus = 'completed';
+      appointment.status = 'confirmed';
+      appointment.amount = normalizedAmount;
+      appointment.paymentMethod = paymentMethod;
+      appointment.paymentCapturedAt = now;
+    }
+
     await appointment.save();
-    
-    // Send email with payment confirmation
-    await sendAppointmentEmail(appointment, true);
-    
+
+    // Send email with payment confirmation (includes receipt PDF when paid)
+    await sendAppointmentEmail(appointment, appointment.paymentStatus === 'completed');
+
     res.status(200).json({
       success: true,
       data: {
@@ -378,9 +420,204 @@ exports.processPayment = async (req, res, next) => {
         status: appointment.status,
         paymentStatus: appointment.paymentStatus,
         paymentMethod: appointment.paymentMethod,
-        amount: appointment.amount
-      }
+        amount: appointment.amount,
+        paymentGateway: appointment.paymentGateway,
+        razorpayOrderId: appointment.razorpayOrderId,
+        razorpayPaymentId: appointment.razorpayPaymentId,
+        receiptAvailable: appointment.paymentStatus === 'completed',
+      },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Download payment receipt for an appointment
+// @route   GET /api/appointments/:id/receipt
+// @access  Private
+exports.downloadPaymentReceipt = async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id).populate({
+      path: 'doctorId',
+      select: 'specialty location user',
+      populate: { path: 'user', select: 'name email' },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found',
+      });
+    }
+
+    const isOwner = appointment.userId.toString() === req.user.id;
+    const isDoctor = appointment.doctorId?.user?._id?.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isOwner && !isDoctor && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to download this receipt.',
+      });
+    }
+
+    if (appointment.paymentStatus !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has not been completed for this appointment.',
+      });
+    }
+
+    const inline = req.query.inline === 'true';
+    const doc = new PDFDocument({ margin: 50 });
+    const filename = `appointment_${appointment._id}_receipt.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    const primaryColor = '#2563EB';
+    const darkColor = '#1F2937';
+    const mutedColor = '#6B7280';
+    const currencyCode = appointment.paymentMeta?.razorpay?.currency || 'INR';
+
+    const formatDateTime = value => {
+      if (!value) return 'N/A';
+      return new Date(value).toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+    };
+
+    const formatCurrency = valueInPaise => {
+      const numericValue = Number.isFinite(Number(valueInPaise)) ? Number(valueInPaise) / 100 : 0;
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(numericValue);
+    };
+
+    const addSection = (title, rows) => {
+      doc.moveDown(1);
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .fillColor(primaryColor)
+        .text(title.toUpperCase());
+      doc.moveDown(0.35);
+      rows.forEach(({ label, value }) => {
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(11)
+          .fillColor(darkColor)
+          .text(`${label}: `, { continued: true });
+        doc
+          .font('Helvetica')
+          .fontSize(11.5)
+          .fillColor('#111827')
+          .text(value || 'N/A');
+      });
+    };
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(20)
+      .fillColor(primaryColor)
+      .text('Health Scheduling Hub', { align: 'center' });
+
+    doc
+      .moveDown(0.2)
+      .font('Helvetica-Bold')
+      .fontSize(16)
+      .fillColor(darkColor)
+      .text('Payment Receipt', { align: 'center' });
+
+    doc
+      .moveDown(0.4)
+      .lineWidth(2)
+      .strokeColor(primaryColor)
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+      .stroke();
+
+    doc.moveDown(0.6);
+    doc
+      .font('Helvetica')
+      .fontSize(11)
+      .fillColor(mutedColor)
+      .text(`Receipt Generated: ${formatDateTime(new Date())}`);
+
+    addSection('Invoice Details', [
+      { label: 'Appointment ID', value: appointment._id.toString() },
+      { label: 'Payment Status', value: appointment.paymentStatus },
+      { label: 'Payment Method', value: appointment.paymentMethod || 'N/A' },
+      { label: 'Payment Gateway', value: appointment.paymentGateway || 'N/A' },
+      { label: 'Payment Captured At', value: formatDateTime(appointment.paymentCapturedAt) },
+    ]);
+
+    addSection('Patient Details', [
+      { label: 'Name', value: appointment.patientName },
+      { label: 'Email', value: appointment.patientEmail },
+      { label: 'Phone', value: appointment.patientPhone },
+    ]);
+
+    addSection('Doctor Details', [
+      { label: 'Doctor', value: appointment.doctorId?.user?.name || 'N/A' },
+      { label: 'Specialty', value: appointment.doctorId?.specialty || 'N/A' },
+      { label: 'Location', value: appointment.doctorId?.location || 'N/A' },
+    ]);
+
+    addSection('Appointment Details', [
+      { label: 'Date', value: appointment.date },
+      { label: 'Time', value: appointment.time },
+      { label: 'Reason', value: appointment.reason },
+    ]);
+
+    doc.moveDown(1);
+    doc
+      .rect(doc.page.margins.left, doc.y, doc.page.width - doc.page.margins.left - doc.page.margins.right, 70)
+      .fillOpacity(0.08)
+      .fill(primaryColor)
+      .fillOpacity(1);
+
+    const summaryTop = doc.y + 10;
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(13)
+      .fillColor(primaryColor)
+      .text('PAYMENT SUMMARY', doc.page.margins.left + 12, summaryTop);
+
+    doc
+      .font('Helvetica')
+      .fontSize(12)
+      .fillColor(darkColor)
+      .text(`Amount Paid: ${formatCurrency(appointment.amount)}`, {
+        align: 'left',
+        indent: 12,
+      });
+    doc.text(`Currency: ${currencyCode}`, { indent: 12 });
+    if (appointment.razorpayOrderId) {
+      doc.text(`Razorpay Order ID: ${appointment.razorpayOrderId}`, { indent: 12 });
+    }
+    if (appointment.razorpayPaymentId) {
+      doc.text(`Razorpay Payment ID: ${appointment.razorpayPaymentId}`, { indent: 12 });
+    }
+    doc.moveDown(1.5);
+
+    doc
+      .font('Helvetica')
+      .fontSize(10.5)
+      .fillColor(mutedColor)
+      .text(
+        'This is a system-generated receipt. For any queries regarding your payment, please contact support@healthschedulinghub.com.',
+        {
+          align: 'center',
+        }
+      );
+
+    doc.end();
   } catch (error) {
     next(error);
   }

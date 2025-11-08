@@ -106,10 +106,11 @@ export const appointmentService = {
   },
   
   // Process payment for an appointment
-  processPayment: async (appointmentId: string, paymentMethod: string): Promise<any> => {
+  processPayment: async (appointmentId: string, paymentMethod: string, paymentData?: Record<string, unknown>): Promise<any> => {
     try {
       const response = await api.post(`/appointments/${appointmentId}/pay`, { 
-        paymentMethod 
+        paymentMethod,
+        ...(paymentData ?? {})
       });
       return response.data;
     } catch (error: any) {

@@ -54,6 +54,34 @@ const AppointmentSchema = new mongoose.Schema({
     enum: ['online', 'offline', 'card', 'gpay', 'paytm', 'phonepe', null],
     default: null
   },
+  paymentGateway: {
+    type: String,
+    enum: ['razorpay', 'stripe', null],
+    default: null
+  },
+  razorpayOrderId: {
+    type: String,
+    index: true,
+    sparse: true
+  },
+  razorpayPaymentId: {
+    type: String,
+    index: true,
+    sparse: true
+  },
+  razorpaySignature: {
+    type: String
+  },
+  paymentInitiatedAt: {
+    type: Date
+  },
+  paymentCapturedAt: {
+    type: Date
+  },
+  paymentMeta: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
+  },
   amount: {
     type: Number,
     default: 0

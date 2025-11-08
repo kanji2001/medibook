@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { appointmentService } from '@/services/appointmentApi';
 import { CreditCard, Wallet, Check, Loader2 } from 'lucide-react';
+import PaymentButton, { PaymentSuccessPayload } from './PaymentButton';
 
 interface PaymentOptionsProps {
   appointmentId: string;
@@ -17,11 +18,14 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'gpay' | 'paytm' | 'phonepe' | 'offline' | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  const payableAmountRupees = useMemo(() => (amount && amount > 0 ? amount / 100 : 0), [amount]);
+  const isDigitalWallet = paymentMethod === 'gpay' || paymentMethod === 'paytm' || paymentMethod === 'phonepe';
+
   const handlePaymentSelect = (method: 'online' | 'gpay' | 'paytm' | 'phonepe' | 'offline') => {
     setPaymentMethod(method);
   };
 
-  const handleProceed = async () => {
+  const handleOfflineConfirmation = async () => {
     if (!paymentMethod) {
       toast({
         title: "Payment Method Required",
@@ -35,7 +39,10 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
       setProcessing(true);
 
       // Process the payment through the API
-      await appointmentService.processPayment(appointmentId, paymentMethod);
+      await appointmentService.processPayment(appointmentId, paymentMethod, {
+        amount,
+        currency: 'INR',
+      });
       
       toast({
         title: "Payment Successful",
@@ -58,6 +65,56 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleOnlinePaymentSuccess = async (payload: PaymentSuccessPayload) => {
+    console.info('Razorpay payment confirmed:', payload);
+    if (!paymentMethod) {
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      await appointmentService.processPayment(appointmentId, paymentMethod, {
+        amount,
+        currency: payload.order.currency ?? 'INR',
+        razorpay: {
+          orderId: payload.razorpay.razorpay_order_id,
+          paymentId: payload.razorpay.razorpay_payment_id,
+          signature: payload.razorpay.razorpay_signature,
+        },
+        order: payload.order,
+        verification: payload.verification,
+      });
+
+      toast({
+        title: "Payment Successful",
+        description: "Your payment has been processed. Your appointment is confirmed.",
+      });
+
+      if (onSuccess) {
+        onSuccess(appointmentId, paymentMethod);
+      } else {
+        navigate('/patient-dashboard');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Payment Update Failed",
+        description: error.message || "We could not update your appointment status. Please contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleOnlinePaymentError = (error: Error) => {
+    const userDismissed = /closed/i.test(error.message);
+    toast({
+      title: userDismissed ? "Payment Cancelled" : "Payment Not Completed",
+      description: error.message,
+      variant: userDismissed ? "default" : "destructive",
+    });
   };
 
   return (
@@ -132,34 +189,56 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
       <div className="mt-6 p-4 bg-secondary/30 rounded-lg">
         <div className="flex justify-between items-center">
           <span className="font-medium">Total Amount:</span>
-          <span className="text-xl font-bold">${(amount / 100).toFixed(2)}</span>
+          <span className="text-xl font-bold">₹{payableAmountRupees.toFixed(2)}</span>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
           {paymentMethod === 'offline'
             ? 'Please bring your payment on the day of your appointment.'
-            : paymentMethod === 'gpay' || paymentMethod === 'paytm' || paymentMethod === 'phonepe'
-              ? `Payment will be processed via ${paymentMethod === 'gpay' ? 'Google Pay' : paymentMethod === 'paytm' ? 'Paytm' : 'PhonePe'}.`
+            : isDigitalWallet
+              ? `Payment will be processed via ${
+                  paymentMethod === 'gpay' ? 'Google Pay' : paymentMethod === 'paytm' ? 'Paytm' : 'PhonePe'
+                } using Razorpay secure checkout.`
               : 'Select a payment method to continue.'}
         </p>
       </div>
       
       <div className="flex justify-end mt-6">
-        <button
-          onClick={handleProceed}
-          disabled={!paymentMethod || processing}
-          className="btn-primary"
-        >
-          {processing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Processing...
-            </>
-          ) : paymentMethod === 'offline' ? (
-            'Confirm Appointment'
-          ) : (
-            'Proceed to Payment'
-          )}
-        </button>
+        {paymentMethod === 'offline' ? (
+          <button
+            onClick={handleOfflineConfirmation}
+            disabled={!paymentMethod || processing}
+            className="btn-primary"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Processing...
+              </>
+            ) : (
+              'Confirm Appointment'
+            )}
+          </button>
+        ) : isDigitalWallet ? (
+          <PaymentButton
+            amountInPaise={amount}
+            label={processing ? 'Finalising...' : 'Proceed to Payment'}
+            className="btn-primary"
+            onSuccess={handleOnlinePaymentSuccess}
+            onError={handleOnlinePaymentError}
+            disabled={processing}
+          />
+        ) : (
+          <button
+            onClick={() => toast({
+              title: "Payment Method Required",
+              description: "Please choose a payment option before continuing.",
+              variant: "destructive",
+            })}
+            className="btn-primary"
+          >
+            Select a payment method
+          </button>
+        )}
       </div>
     </div>
   );

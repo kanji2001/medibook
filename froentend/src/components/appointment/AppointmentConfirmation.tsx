@@ -1,9 +1,11 @@
 
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, CheckCircle, User, MapPin } from 'lucide-react';
+import { Calendar, CheckCircle, User, MapPin } from 'lucide-react';
 import { AppointmentStatusType } from '@/components/ui/AppointmentStatus';
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
 import { PatientFormData } from './PatientInfoForm';
+import { useToast } from '@/hooks/use-toast';
 
 interface Doctor {
   id: string;
@@ -29,6 +31,90 @@ const AppointmentConfirmation = ({
   formData,
   appointmentId
 }: AppointmentConfirmationProps) => {
+  const { toast } = useToast();
+  const backendBaseUrl = useMemo(() => {
+    const base = import.meta.env.VITE_API_BASE_URL;
+    return base ? base.replace(/\/+$/, '') : '';
+  }, []);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState(false);
+
+  const fetchReceiptBlob = useCallback(
+    async (options: { inline: boolean }) => {
+      if (!appointmentId) {
+        throw new Error('Appointment ID missing.');
+      }
+
+      if (!backendBaseUrl) {
+        throw new Error('Backend URL is not configured.');
+      }
+
+      const url = `${backendBaseUrl}/api/appointments/${appointmentId}/receipt${options.inline ? '?inline=true' : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => null);
+        throw new Error(errorText || 'Failed to fetch receipt.');
+      }
+
+      return response.blob();
+    },
+    [appointmentId, backendBaseUrl],
+  );
+
+  const handleDownloadReceipt = useCallback(async () => {
+    try {
+      setDownloadingReceipt(true);
+      const blob = await fetchReceiptBlob({ inline: false });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `appointment_${appointmentId}_receipt.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Receipt downloaded',
+        description: 'Your payment receipt has been saved.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to download receipt.';
+      toast({
+        title: 'Download failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  }, [appointmentId, fetchReceiptBlob, toast]);
+
+  const handleViewReceipt = useCallback(async () => {
+    try {
+      setViewingReceipt(true);
+      const blob = await fetchReceiptBlob({ inline: true });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 60_000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to open receipt.';
+      toast({
+        title: 'Unable to open receipt',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setViewingReceipt(false);
+    }
+  }, [fetchReceiptBlob, toast]);
   
   return (
     <div className="max-w-2xl mx-auto text-center">
@@ -114,11 +200,31 @@ const AppointmentConfirmation = ({
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/" className="btn-outline">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Link to="/" className="btn-outline w-full text-center">
             Return to Home
           </Link>
-          <Link to="/patient-dashboard" className="btn-primary flex items-center justify-center">
+          {appointmentId && (
+            <button
+              type="button"
+              onClick={handleDownloadReceipt}
+              className="btn-outline w-full"
+              disabled={downloadingReceipt}
+            >
+              {downloadingReceipt ? 'Preparing...' : 'Download Receipt'}
+            </button>
+          )}
+          {appointmentId && (
+            <button
+              type="button"
+              onClick={handleViewReceipt}
+              className="btn-outline w-full"
+              disabled={viewingReceipt}
+            >
+              {viewingReceipt ? 'Opening...' : 'View Payment Slip'}
+            </button>
+          )}
+          <Link to="/patient-dashboard" className="btn-primary flex items-center justify-center w-full">
             View My Appointments
           </Link>
         </div>

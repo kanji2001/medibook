@@ -1,5 +1,13 @@
 # MediBook Backend API
 
+> ### Razorpay Setup (Test Mode)
+> 1. Create a Razorpay account and switch to the **Test Mode** dashboard.
+> 2. Generate API credentials under **Settings → API Keys** and copy the `Key ID` and `Key Secret`.
+> 3. Duplicate `.env.example` as `.env` in `backend/` (or project root) and add the values to `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Never commit live credentials.
+> 4. Restart the Node.js server after updating environment variables (`npm install` first to pull the `razorpay` dependency).
+> 5. Configure the Vite frontend with `VITE_API_BASE_URL=http://localhost:5000` for local testing.
+> 6. To move to live payments, toggle Razorpay to **Live Mode** and replace the keys with live credentials in your `.env` file; no code changes are required.
+
 This is the backend for the MediBook doctor appointment booking application.
 
 ## 🚀 Getting Started

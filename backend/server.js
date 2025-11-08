@@ -6,15 +6,16 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const path = require('path');
 
+// Load environment variables
+dotenv.config();
+
 // Route imports
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const doctorRoutes = require('./routes/doctors');
 const appointmentRoutes = require('./routes/appointments');
 const adminRoutes = require('./routes/admin');
-
-// Load environment variables
-dotenv.config();
+const paymentRoutes = require('./routes/payment');
 
 // Initialize Express app
 const app = express();
@@ -46,6 +47,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api', paymentRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/admin', adminRoutes);
