@@ -5,8 +5,8 @@ import { AdminUser } from '@/stores/adminStore';
 interface UserListProps {
   users: AdminUser[];
   loading: boolean;
-  onApproveDoctor: (userId: string) => Promise<void> | void;
-  onRejectDoctor: (userId: string) => Promise<void> | void;
+  onApproveDoctor: (user: AdminUser) => Promise<void> | void;
+  onRejectDoctor: (user: AdminUser) => Promise<void> | void;
 }
 
 const UserList: FC<UserListProps> = ({ users, loading, onApproveDoctor, onRejectDoctor }) => {
@@ -52,6 +52,24 @@ const UserList: FC<UserListProps> = ({ users, loading, onApproveDoctor, onReject
       );
     }
 
+  if (status === 'rejected') {
+    return (
+      <div className="flex items-center text-red-600">
+        <Clock className="w-4 h-4 mr-1 rotate-180" />
+        <span>Rejected</span>
+      </div>
+    );
+  }
+
+  if (status === 'suspended') {
+    return (
+      <div className="flex items-center text-red-500">
+        <Clock className="w-4 h-4 mr-1" />
+        <span>Suspended</span>
+      </div>
+    );
+  }
+
     return null;
   };
 
@@ -64,35 +82,69 @@ const UserList: FC<UserListProps> = ({ users, loading, onApproveDoctor, onReject
               {user.name.charAt(0)}
             </div>
 
-            <div className="flex-grow">
-              <div className="flex items-center">
+            <div className="flex-grow space-y-2">
+              <div className="flex items-center flex-wrap gap-2">
                 <h3 className="font-semibold">{user.name}</h3>
-                <div className="badge badge-outline ml-2 capitalize">{user.role}</div>
+                <div className="badge badge-outline capitalize">{user.role}</div>
+                {user.doctorProfile && (
+                  <div className="badge capitalize bg-primary/10 text-primary border-primary/20">
+                    {user.doctorProfile.specialty}
+                  </div>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-muted-foreground">
                 Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
               </div>
+
+              {user.doctorProfile && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                  <div>
+                    <span className="font-medium text-foreground">Experience:</span>{' '}
+                    {user.doctorProfile.experience} years
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Phone:</span>{' '}
+                    {user.doctorProfile.phone || '—'}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="font-medium text-foreground">Location:</span>{' '}
+                    {user.doctorProfile.location}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="font-medium text-foreground">Clinic Address:</span>{' '}
+                    {user.doctorProfile.address}
+                  </div>
+                  {user.status === 'rejected' && user.doctorProfile.rejectionReason && (
+                    <div className="sm:col-span-2 text-red-600">
+                      <span className="font-medium text-foreground">Rejection Reason:</span>{' '}
+                      {user.doctorProfile.rejectionReason}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="md:text-right">
-              <div className="mb-2">{getStatusBadge(user.status)}</div>
+              <div className="mb-2 flex justify-end">{getStatusBadge(user.status)}</div>
 
-              {user.status === 'pending' ? (
+              {user.status === 'pending' && user.doctorProfile ? (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => onApproveDoctor(user.id)}
+                    onClick={() => onApproveDoctor(user)}
                     className="btn-primary py-1 px-3 text-sm"
                   >
                     Approve
                   </button>
                   <button
-                    onClick={() => onRejectDoctor(user.id)}
+                    onClick={() => onRejectDoctor(user)}
                     className="btn-outline py-1 px-3 text-sm text-red-500 border-red-500 hover:bg-red-50"
                   >
                     Reject
                   </button>
                 </div>
+              ) : user.status === 'rejected' ? (
+                <span className="text-xs text-muted-foreground">Application rejected</span>
               ) : (
                 <button className="btn-outline py-1 px-3 text-sm">View Details</button>
               )}

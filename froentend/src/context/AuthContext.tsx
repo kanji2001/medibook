@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import shallow from 'zustand/shallow';
-import useAuthStore, { Availability, AuthUser, UserRole } from '@/stores/authStore';
+import useAuthStore, { Availability, AuthUser, RegisterPayload, UserRole } from '@/stores/authStore';
 
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<any>;
-  register: (name: string, email: string, password: string, role: string) => Promise<any>;
+  register: (payload: RegisterPayload) => Promise<any>;
   logout: () => void;
   updateUserAvailability: (availability: Availability) => void;
 }

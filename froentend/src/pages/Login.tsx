@@ -42,22 +42,24 @@ const Login = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     clearErrors('root');
-    try {
-      await login(values.email, values.password);
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
-      });
-      navigate('/');
-    } catch (error: any) {
-      const message = error?.message || 'Invalid email or password.';
+    const result = await login(values.email, values.password);
+
+    if (!result?.success) {
+      const message = result?.message || 'Invalid email or password.';
       setError('root', { type: 'server', message });
       toast({
         title: 'Login Failed',
         description: message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
+      return;
     }
+
+    toast({
+      title: 'Login Successful',
+      description: 'Welcome back!',
+    });
+    navigate('/');
   };
 
   return (

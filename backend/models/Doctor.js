@@ -33,6 +33,19 @@ const DoctorSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  applicationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+    index: true,
+  },
+  appliedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  approvedAt: Date,
+  approvalNotes: String,
+  rejectionReason: String,
   specialty: {
     type: String,
     required: [true, 'Please provide a specialty']
@@ -40,6 +53,14 @@ const DoctorSchema = new mongoose.Schema({
   experience: {
     type: Number,
     required: [true, 'Please provide years of experience']
+  },
+  licenseNumber: {
+    type: String,
+    default: ''
+  },
+  consultationFee: {
+    type: Number,
+    default: 0
   },
   rating: {
     type: Number,

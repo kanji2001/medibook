@@ -24,6 +24,28 @@ export interface AuthUser {
   phone?: string;
   specialty?: string;
   bio?: string;
+  status?: 'active' | 'pending' | 'rejected' | 'suspended';
+  applicationStatus?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface RegisterPayload {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole | 'patient' | 'doctor';
+  phone?: string;
+  specialty?: string;
+  experience?: number;
+  location?: string;
+  address?: string;
+  about?: string;
+  education?: string[] | string;
+  languages?: string[] | string;
+  specializations?: string[] | string;
+  insurances?: string[] | string;
+  avatar?: string;
+  licenseNumber?: string;
+  consultationFee?: number;
 }
 
 interface AuthState {
@@ -35,11 +57,8 @@ interface AuthState {
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (
-    name: string,
-    email: string,
-    password: string,
-    role: string
-  ) => Promise<{ success: boolean; message?: string }>;
+    payload: RegisterPayload
+  ) => Promise<{ success: boolean; awaitingApproval?: boolean; message?: string }>;
   logout: () => void;
   updateUserAvailability: (availability: Availability) => void;
 }
@@ -74,6 +93,8 @@ const fetchCurrentUser = async (): Promise<AuthUser | null> => {
       specialty: profile.specialty,
     bio: profile.bio,
       availability: profile.availability,
+      status: profile.status,
+      applicationStatus: profile.applicationStatus,
     };
   } catch (error) {
     console.error('Failed to fetch current user', error);
@@ -162,20 +183,40 @@ const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (name, email, password, role) => {
+  register: async payload => {
     set({ loading: true, error: null });
     try {
-      const response = await authService.register({ name, email, password, role });
-      if (!response.success || !response.token) {
-        throw new Error(response.message || 'Registration failed');
-      }
+      const response = await authService.register({
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        role: payload.role,
+        phone: payload.phone,
+        specialty: payload.specialty,
+        experience: payload.experience,
+        location: payload.location,
+        address: payload.address,
+        about: payload.about,
+        education: payload.education,
+        languages: payload.languages,
+        specializations: payload.specializations,
+        insurances: payload.insurances,
+        avatar: payload.avatar,
+        licenseNumber: payload.licenseNumber,
+        consultationFee: payload.consultationFee,
+      });
 
-      const decoded = decodeToken(response.token);
-      let user = decoded ? (decoded as AuthUser) : null;
+      const awaitingApproval = Boolean(response.awaitingApproval);
+      let user: AuthUser | null = null;
 
-      const profile = await fetchCurrentUser();
-      if (profile) {
-        user = profile;
+      if (response.token) {
+        const decoded = decodeToken(response.token);
+        user = decoded ? (decoded as AuthUser) : null;
+
+        const profile = await fetchCurrentUser();
+        if (profile) {
+          user = profile;
+        }
       }
 
       set({
@@ -185,7 +226,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      return { success: Boolean(user) };
+      return { success: true, awaitingApproval };
     } catch (error: any) {
       console.error('Registration error:', error);
       set({

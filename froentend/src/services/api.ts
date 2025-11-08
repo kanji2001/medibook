@@ -55,6 +55,7 @@ export const authService = {
     email: string;
     password: string;
     role: string;
+    [key: string]: any;
   }) => {
     const response = await api.post('/auth/register', userData);
     if (response.data.token) {
@@ -181,6 +182,11 @@ export const adminService = {
     const response = await api.get('/admin/appointments');
     return response.data;
   },
+
+  getDoctorApplications: async () => {
+    const response = await api.get('/admin/doctor-applications');
+    return response.data;
+  },
   
   updateUser: async (id: string, userData: any) => {
     const response = await api.put(`/admin/users/${id}`, userData);
@@ -189,6 +195,19 @@ export const adminService = {
   
   deleteUser: async (id: string) => {
     const response = await api.delete(`/admin/users/${id}`);
+    return response.data;
+  },
+
+  approveDoctorApplication: async (id: string, payload?: { notes?: string }) => {
+    const response = await api.post(`/admin/doctor-applications/${id}/approve`, payload);
+    return response.data;
+  },
+
+  rejectDoctorApplication: async (
+    id: string,
+    payload?: { reason?: string; notes?: string }
+  ) => {
+    const response = await api.post(`/admin/doctor-applications/${id}/reject`, payload);
     return response.data;
   }
 };

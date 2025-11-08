@@ -15,6 +15,7 @@ import DoctorProfile from "./pages/DoctorProfile";
 import Appointment from "./pages/Appointment";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import DoctorApplicationPending from "./pages/DoctorApplicationPending";
 import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/services" element={<Services />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/doctor-application/pending" element={<DoctorApplicationPending />} />
             
             {/* Protected Routes */}
             <Route 

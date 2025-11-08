@@ -8,22 +8,34 @@ const Appointment = require('../models/Appointment');
 // @access  Public
 exports.getDoctors = async (req, res, next) => {
   try {
-    let query = {};
+    const filters = [];
 
     // Filter by specialty
     if (req.query.specialty && req.query.specialty !== 'All Specialties') {
-      query.specialty = { $regex: req.query.specialty, $options: 'i' };
+      filters.push({ specialty: { $regex: req.query.specialty, $options: 'i' } });
     }
 
     // Filter by rating if provided
     if (req.query.rating) {
-      query.rating = { $gte: parseFloat(req.query.rating) };
+      filters.push({ rating: { $gte: parseFloat(req.query.rating) } });
     }
 
     // Filter by featured status
     if (req.query.featured === 'true') {
-      query.featured = true;
+      filters.push({ featured: true });
     }
+
+    const query = {
+      $and: [
+        {
+          $or: [
+            { applicationStatus: 'approved' },
+            { applicationStatus: { $exists: false } },
+          ],
+        },
+        ...filters,
+      ],
+    };
 
     const doctors = await Doctor.find(query)
       .populate({
@@ -70,6 +82,13 @@ exports.getDoctor = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Doctor not found'
+      });
+    }
+
+    if (doctor.applicationStatus && doctor.applicationStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctor profile is not approved yet',
       });
     }
 
@@ -143,6 +162,13 @@ exports.updateAvailability = async (req, res, next) => {
       });
     }
 
+    if (doctor.applicationStatus && doctor.applicationStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctor profile is awaiting approval',
+      });
+    }
+
     // Update availability
     doctor.availability = req.body;
     await doctor.save();
@@ -167,6 +193,13 @@ exports.updateDoctorProfile = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Doctor profile not found',
+      });
+    }
+
+    if (doctor.applicationStatus && doctor.applicationStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctor profile is awaiting approval',
       });
     }
 
@@ -269,6 +302,13 @@ exports.getDoctorAvailability = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Doctor not found'
+      });
+    }
+
+    if (doctor.applicationStatus && doctor.applicationStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctor profile is not approved yet'
       });
     }
 

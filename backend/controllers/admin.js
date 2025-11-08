@@ -9,11 +9,44 @@ const Appointment = require('../models/Appointment');
 exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.find().select('-password');
+    const doctors = await Doctor.find().populate({
+      path: 'user',
+      select: 'name email status role',
+    });
+
+    const doctorByUser = new Map();
+    doctors.forEach(doctor => {
+      doctorByUser.set(doctor.user._id.toString(), doctor);
+    });
+
+    const data = users.map(user => {
+      const doctorProfile = doctorByUser.get(user._id.toString());
+      const userObj = user.toObject();
+
+      if (doctorProfile) {
+        userObj.doctorProfile = {
+          id: doctorProfile._id,
+          specialty: doctorProfile.specialty,
+          experience: doctorProfile.experience,
+          location: doctorProfile.location,
+          address: doctorProfile.address,
+          phone: doctorProfile.phone,
+          about: doctorProfile.about,
+          applicationStatus: doctorProfile.applicationStatus,
+          licenseNumber: doctorProfile.licenseNumber,
+          consultationFee: doctorProfile.consultationFee,
+          appliedAt: doctorProfile.appliedAt,
+          approvedAt: doctorProfile.approvedAt,
+        };
+      }
+
+      return userObj;
+    });
 
     res.status(200).json({
       success: true,
-      count: users.length,
-      data: users
+      count: data.length,
+      data,
     });
   } catch (error) {
     next(error);
@@ -75,7 +108,9 @@ exports.createDoctor = async (req, res, next) => {
       insurances,
       image,
       featured,
-      avatar
+      avatar,
+      licenseNumber,
+      consultationFee,
     } = req.body;
 
     if (!specialty || !experience || !location || !address || !phone || !about) {
@@ -141,6 +176,7 @@ exports.createDoctor = async (req, res, next) => {
 
     // Ensure the user is marked as a doctor and sync profile fields
     user.role = 'doctor';
+    user.status = 'active';
     if (avatar || image) {
       user.avatar = avatar || image;
     }
@@ -180,6 +216,12 @@ exports.createDoctor = async (req, res, next) => {
         insurances: toArray(insurances),
         image,
         featured: featured || false,
+        licenseNumber: licenseNumber || '',
+        consultationFee: Number.isFinite(Number(consultationFee))
+          ? Number(consultationFee)
+          : 0,
+        applicationStatus: 'approved',
+        approvedAt: new Date(),
         availability: {
           status: 'available',
           workingHours: [
@@ -370,6 +412,103 @@ exports.getAppointments = async (req, res, next) => {
       success: true,
       count: appointments.length,
       data: appointments
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get pending doctor applications
+// @route   GET /api/admin/doctor-applications
+// @access  Private (Admin only)
+exports.getDoctorApplications = async (req, res, next) => {
+  try {
+    const doctors = await Doctor.find({ applicationStatus: 'pending' }).populate({
+      path: 'user',
+      select: 'name email phone status role createdAt',
+    });
+
+    res.status(200).json({
+      success: true,
+      count: doctors.length,
+      data: doctors,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Approve doctor application
+// @route   POST /api/admin/doctor-applications/:id/approve
+// @access  Private (Admin only)
+exports.approveDoctorApplication = async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id).populate({
+      path: 'user',
+      select: 'name email status role phone specialty bio',
+    });
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor application not found',
+      });
+    }
+
+    doctor.applicationStatus = 'approved';
+    doctor.approvedAt = new Date();
+    doctor.approvalNotes = req.body.notes || '';
+    await doctor.save();
+
+    const userId = doctor.user && doctor.user._id ? doctor.user._id : doctor.user;
+    const user = await User.findById(userId);
+    if (user) {
+      user.status = 'active';
+      user.role = 'doctor';
+      if (doctor.phone && !user.phone) user.phone = doctor.phone;
+      if (doctor.specialty && !user.specialty) user.specialty = doctor.specialty;
+      if (doctor.about && !user.bio) user.bio = doctor.about;
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: doctor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reject doctor application
+// @route   POST /api/admin/doctor-applications/:id/reject
+// @access  Private (Admin only)
+exports.rejectDoctorApplication = async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor application not found',
+      });
+    }
+
+    doctor.applicationStatus = 'rejected';
+    doctor.rejectionReason = req.body.reason || '';
+    doctor.approvalNotes = req.body.notes || '';
+    await doctor.save();
+
+    const userId = doctor.user && doctor.user._id ? doctor.user._id : doctor.user;
+    const user = await User.findById(userId);
+    if (user) {
+      user.status = 'rejected';
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: doctor,
     });
   } catch (error) {
     next(error);

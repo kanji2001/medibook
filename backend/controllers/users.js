@@ -23,7 +23,8 @@ exports.getUserProfile = async (req, res, next) => {
       role: user.role,
     avatar: user.avatar,
     phone: user.phone,
-    bio: user.bio
+    bio: user.bio,
+    status: user.status,
     };
 
     // If user is a doctor, include doctor profile
@@ -33,6 +34,7 @@ exports.getUserProfile = async (req, res, next) => {
         userData.doctorId = doctor._id;
         userData.specialty = doctor.specialty;
         userData.availability = doctor.availability;
+        userData.applicationStatus = doctor.applicationStatus;
       }
     }
 

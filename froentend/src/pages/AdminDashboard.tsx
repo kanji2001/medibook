@@ -13,7 +13,8 @@ import UserList from '@/components/admin/UserList';
 import AppointmentsPanel from '@/components/admin/AppointmentsPanel';
 import ReportsSection from '@/components/admin/ReportsSection';
 import SettingsPanel from '@/components/admin/SettingsPanel';
-import AddDoctorModal, { DoctorPayload } from '@/components/admin/AddDoctorModal';
+import AddDoctorModal from '@/components/admin/AddDoctorModal';
+import type { DoctorPayload } from '@/components/admin/addDoctorFormConfig';
 import { AdminSection, UserFilter } from '@/components/admin/types';
 import { AdminAppointment, AdminUser } from '@/stores/adminStore';
 
@@ -33,9 +34,10 @@ const AdminDashboard = () => {
     loadingAppointments,
     fetchUsers,
     fetchAppointments,
-    updateUserRole,
     createDoctor,
     creatingDoctor,
+    approveDoctorApplication,
+    rejectDoctorApplication,
     error,
     clearError,
   } = useAdminStore(state => ({
@@ -45,9 +47,10 @@ const AdminDashboard = () => {
     loadingAppointments: state.loadingAppointments,
     fetchUsers: state.fetchUsers,
     fetchAppointments: state.fetchAppointments,
-    updateUserRole: state.updateUserRole,
     createDoctor: state.createDoctor,
     creatingDoctor: state.creatingDoctor,
+    approveDoctorApplication: state.approveDoctorApplication,
+    rejectDoctorApplication: state.rejectDoctorApplication,
     error: state.error,
     clearError: state.clearError,
   }));
@@ -82,9 +85,12 @@ const AdminDashboard = () => {
     }
   }, [error, toast, clearError]);
 
-  const handleApproveDoctor = async (userId: string) => {
+  const handleApproveDoctor = async (adminUser: AdminUser) => {
+    if (!adminUser.doctorProfile) {
+      return handleSampleAction();
+    }
     try {
-      await updateUserRole(userId, 'doctor');
+      await approveDoctorApplication(adminUser.doctorProfile.id, adminUser.id);
       toast({
         title: 'Doctor Approved',
         description: 'The doctor has been approved and can now use the platform.',
@@ -98,12 +104,15 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleRejectDoctor = async (userId: string) => {
+  const handleRejectDoctor = async (adminUser: AdminUser) => {
+    if (!adminUser.doctorProfile) {
+      return handleSampleAction();
+    }
     try {
-      await updateUserRole(userId, 'patient');
+      await rejectDoctorApplication(adminUser.doctorProfile.id, adminUser.id);
       toast({
-        title: 'Doctor Role Updated',
-        description: 'The doctor has been moved back to patient status.',
+        title: 'Doctor Application Rejected',
+        description: 'The doctor has been notified about the application status.',
         variant: 'destructive',
       });
     } catch (err: any) {
@@ -124,14 +133,36 @@ const AdminDashboard = () => {
         role: 'doctor',
         status: 'active',
         createdAt: '2025-05-13T00:00:00.000Z',
+        doctorProfile: {
+          id: 'sample-doctor-1',
+          specialty: 'Cardiology',
+          experience: 12,
+          location: 'New York Medical Center',
+          address: '123 Medical Avenue, New York, NY 10001',
+          phone: '(212) 555-1234',
+          about: 'Experienced cardiologist specializing in preventive cardiac care.',
+          applicationStatus: 'approved',
+          consultationFee: 200,
+        },
       },
       {
         id: 'sample-user-2',
         name: 'Dr. Michael Chen',
         email: 'michael.chen@example.com',
         role: 'doctor',
-        status: 'active',
+        status: 'pending',
         createdAt: '2025-05-13T00:00:00.000Z',
+        doctorProfile: {
+          id: 'sample-doctor-2',
+          specialty: 'Dermatology',
+          experience: 8,
+          location: 'Los Angeles Skin Institute',
+          address: '89 Sunset Blvd, Los Angeles, CA 90049',
+          phone: '(310) 555-0198',
+          about: 'Board-certified dermatologist focused on skincare innovations.',
+          applicationStatus: 'pending',
+          consultationFee: 180,
+        },
       },
       {
         id: 'sample-user-3',
@@ -146,7 +177,7 @@ const AdminDashboard = () => {
         name: 'Jacob Thompson',
         email: 'jacob.thompson@example.com',
         role: 'patient',
-        status: 'pending',
+        status: 'active',
         createdAt: '2025-05-01T00:00:00.000Z',
       },
     ],
@@ -193,9 +224,9 @@ const AdminDashboard = () => {
         case 'patients':
           return adminUser.role === 'patient';
         case 'doctors':
-          return adminUser.role === 'doctor';
+          return adminUser.role === 'doctor' && adminUser.status === 'active';
         case 'pending':
-          return adminUser.status === 'pending';
+          return adminUser.role === 'doctor' && adminUser.status === 'pending';
         default:
           return true;
       }
@@ -204,9 +235,13 @@ const AdminDashboard = () => {
 
   const totals = useMemo(() => {
     const totalUsers = hydratedUsers.length;
-    const totalDoctors = hydratedUsers.filter(adminUser => adminUser.role === 'doctor').length;
+    const totalDoctors = hydratedUsers.filter(
+      adminUser => adminUser.role === 'doctor' && adminUser.status === 'active',
+    ).length;
     const totalPatients = hydratedUsers.filter(adminUser => adminUser.role === 'patient').length;
-    const pendingDoctors = hydratedUsers.filter(adminUser => adminUser.status === 'pending').length;
+    const pendingDoctors = hydratedUsers.filter(
+      adminUser => adminUser.role === 'doctor' && adminUser.status === 'pending',
+    ).length;
     const totalAppointments = hydratedAppointments.length;
 
     return { totalUsers, totalDoctors, totalPatients, pendingDoctors, totalAppointments };

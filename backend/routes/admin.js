@@ -7,7 +7,10 @@ const {
   createDoctor,
   updateDoctor,
   deleteDoctor,
-  getAppointments
+  getAppointments,
+  getDoctorApplications,
+  approveDoctorApplication,
+  rejectDoctorApplication,
 } = require('../controllers/admin');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -22,5 +25,8 @@ router.put('/doctors/:id', updateDoctor);
 router.delete('/doctors/:id', deleteDoctor);
 
 router.get('/appointments', getAppointments);
+router.get('/doctor-applications', getDoctorApplications);
+router.post('/doctor-applications/:id/approve', approveDoctorApplication);
+router.post('/doctor-applications/:id/reject', rejectDoctorApplication);
 
 module.exports = router;

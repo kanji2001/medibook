@@ -7,7 +7,25 @@ const Doctor = require('../models/Doctor');
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      phone,
+      specialty,
+      experience,
+      location,
+      address,
+      about,
+      education,
+      languages,
+      specializations,
+      insurances,
+      avatar,
+      licenseNumber,
+      consultationFee,
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -18,28 +36,50 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    const normalizedRole = role === 'doctor' ? 'doctor' : role || 'patient';
+    const normalizeList = value => {
+      if (Array.isArray(value)) {
+        return value.map(item => (typeof item === 'string' ? item.trim() : item)).filter(Boolean);
+      }
+      if (typeof value === 'string') {
+        return value
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+
     // Create user
     const user = await User.create({
       name,
       email,
       password,
-      role: role || 'patient'
+      role: normalizedRole,
+      status: normalizedRole === 'doctor' ? 'pending' : 'active',
+      phone: normalizedRole === 'doctor' && phone ? phone : undefined,
+      specialty: normalizedRole === 'doctor' && specialty ? specialty : undefined,
+      bio: normalizedRole === 'doctor' && about ? about : undefined,
+      avatar: avatar || undefined,
     });
 
     // If registering as a doctor, create doctor profile
-    if (role === 'doctor') {
+    if (normalizedRole === 'doctor') {
       await Doctor.create({
         user: user._id,
-        specialty: req.body.specialty || 'General Physician',
-        experience: req.body.experience || 0,
-        location: req.body.location || 'Medical Center',
-        address: req.body.address || 'Please update address',
-        phone: req.body.phone || '',
-        about: req.body.about || 'Please update doctor information',
-        education: req.body.education || [],
-        languages: req.body.languages || ['English'],
-        specializations: req.body.specializations || [],
-        insurances: req.body.insurances || [],
+        specialty: specialty || 'General Physician',
+        experience: Number.isFinite(Number(experience)) ? Number(experience) : 0,
+        location: location || 'Medical Center',
+        address: address || 'Please update address',
+        phone: phone || '',
+        about: about || 'Please update doctor information',
+        education: normalizeList(education),
+        languages: normalizeList(languages).length ? normalizeList(languages) : ['English'],
+        specializations: normalizeList(specializations),
+        insurances: normalizeList(insurances),
+        licenseNumber: licenseNumber || '',
+        consultationFee: Number.isFinite(Number(consultationFee)) ? Number(consultationFee) : 0,
+        image: avatar || undefined,
         availability: {
           status: 'available',
           workingHours: [
@@ -105,20 +145,32 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    // Generate JWT token
-    const token = user.getSignedJwtToken();
+    const awaitingApproval = normalizedRole === 'doctor';
+    let token;
+    if (!awaitingApproval) {
+      token = user.getSignedJwtToken();
+    }
 
-    res.status(201).json({
+    const responsePayload = {
       success: true,
-      message: 'User registered successfully',
-      token,
+      message: awaitingApproval
+        ? 'Doctor application submitted successfully. Please wait for admin approval.'
+        : 'User registered successfully',
+      awaitingApproval,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
-      }
-    });
+        role: user.role,
+        status: user.status,
+      },
+    };
+
+    if (token) {
+      responsePayload.token = token;
+    }
+
+    res.status(201).json(responsePayload);
   } catch (error) {
     next(error);
   }
@@ -157,16 +209,34 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Generate JWT token
-    const token = user.getSignedJwtToken();
-
     let userData = {
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.avatar
+      avatar: user.avatar,
+      status: user.status,
     };
+
+    if (user.status && user.status !== 'active') {
+      let message = 'Your account is not active.';
+      if (user.status === 'pending') {
+        message = 'Your account is awaiting admin approval.';
+      } else if (user.status === 'rejected') {
+        message = 'Your account was rejected by the admin.';
+      } else if (user.status === 'suspended') {
+        message = 'Your account has been suspended. Please contact support.';
+      }
+
+      return res.status(403).json({
+        success: false,
+        message,
+        status: user.status,
+      });
+    }
+
+    // Generate JWT token
+    const token = user.getSignedJwtToken();
 
     // If user is doctor, get additional details
     if (user.role === 'doctor') {
@@ -176,7 +246,8 @@ exports.login = async (req, res, next) => {
           ...userData,
           doctorId: doctor._id,
           specialty: doctor.specialty,
-          availability: doctor.availability
+          availability: doctor.availability,
+          applicationStatus: doctor.applicationStatus,
         };
       }
     }
