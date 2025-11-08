@@ -6,7 +6,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { AppointmentStatusType } from '@/components/ui/AppointmentStatus';
 import { fetchDoctors, fetchDoctorById } from '@/services/api';
-import { appointmentService } from '@/services/appointmentApi';
+import useAppointmentStore from '@/stores/appointmentStore';
 
 // Import components
 import AppointmentSteps from '@/components/appointment/AppointmentSteps';
@@ -44,6 +44,9 @@ const Appointment = () => {
   const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
   const [appointmentStatus, setAppointmentStatus] = useState<AppointmentStatusType>('pending');
   const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
+  const { createAppointment } = useAppointmentStore(state => ({
+    createAppointment: state.createAppointment,
+  }));
 
   // Initialize form data state with user data if available
   const [formData, setFormData] = useState<PatientFormData>({
@@ -161,17 +164,15 @@ const Appointment = () => {
         notes: values.notes,
       };
 
-      const response = await appointmentService.createAppointment(appointmentData);
-      console.log('Created appointment response:', response);
+      const appointment = await createAppointment(appointmentData);
 
-      if (response && response.data && response.data.id) {
-        setCreatedAppointmentId(response.data.id);
-        setAppointmentStatus('booked');
-        setStep(4); // Go to payment step
-      } else {
-        console.error('Invalid appointment creation response:', response);
+      if (!appointment?.id) {
         throw new Error('Failed to create appointment');
       }
+
+      setCreatedAppointmentId(appointment.id);
+      setAppointmentStatus('booked');
+      setStep(4); // Go to payment step
 
       toast({
         title: 'Appointment Created!',

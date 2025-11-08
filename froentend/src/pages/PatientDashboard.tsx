@@ -5,40 +5,34 @@ import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Calendar, Clock, User, FileText, MessageSquare, Settings } from 'lucide-react';
-import { appointmentService } from '@/services/api';
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
+import useAppointmentStore from '@/stores/appointmentStore';
 
 const PatientDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { appointments, loadingAppointments, fetchUserAppointments, error } = useAppointmentStore(
+    state => ({
+      appointments: state.appointments,
+      loadingAppointments: state.loadingAppointments,
+      fetchUserAppointments: state.fetchUserAppointments,
+      error: state.error,
+    }),
+  );
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        const userAppointments = await appointmentService.getUserAppointments();
-        const sorted = [...userAppointments].sort((a, b) => 
-          new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime()
-        );
-        setAppointments(sorted);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching appointments:', err);
-        setError('Failed to load your appointments. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAppointments();
-  }, [user]);
+    if (!user) return;
+    fetchUserAppointments().catch(err =>
+      console.error('Error fetching appointments:', err),
+    );
+  }, [user, fetchUserAppointments]);
 
-  const filteredAppointments = appointments.filter(apt => {
+  const sortedAppointments = [...appointments].sort(
+    (a, b) =>
+      new Date(`${a.date} ${a.time}`).getTime() - new Date(`${b.date} ${b.time}`).getTime(),
+  );
+
+  const filteredAppointments = sortedAppointments.filter(apt => {
     const now = new Date();
     const aptDate = new Date(apt.date + ' ' + apt.time);
     
@@ -144,7 +138,7 @@ const PatientDashboard = () => {
               </div>
               
               {/* Appointments List */}
-              {loading ? (
+              {loadingAppointments ? (
                 <div className="text-center py-20">
                   <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
                   <p className="mt-4 text-muted-foreground">Loading appointments...</p>

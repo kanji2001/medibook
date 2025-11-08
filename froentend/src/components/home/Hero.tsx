@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
-import { Search, Calendar, CheckCircle, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, CheckCircle, ChevronRight } from 'lucide-react';
+import QuickAppointmentForm from './QuickAppointmentForm';
 
 const Hero = () => {
-  const navigate = useNavigate(); // Initialize navigate
-
   const [currentIndex, setCurrentIndex] = useState(0);
   const backgroundImages = [
     'https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
@@ -18,10 +17,6 @@ const Hero = () => {
     }, 6000);
     return () => clearInterval(timer);
   }, []);
-
-  const handleSearch = () => {
-    navigate('/doctors'); // Navigate to the search doctors page
-  };
 
   return (
     <div className="relative min-h-[90vh] flex items-center overflow-hidden">
@@ -66,42 +61,7 @@ const Hero = () => {
           <div className="hidden lg:block animate-fade-in">
             <div className="glass-card rounded-2xl p-6 shadow-xl max-w-md mx-auto">
               <h3 className="text-lg font-semibold mb-4">Quick Appointment</h3>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Specialty</label>
-                  <select className="w-full h-12 px-4 rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/20">
-                    <option value="">Select specialty</option>
-                    <option value="cardiology">Cardiology</option>
-                    <option value="dermatology">Dermatology</option>
-                    <option value="neurology">Neurology</option>
-                    <option value="orthopedics">Orthopedics</option>
-                    <option value="pediatrics">Pediatrics</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Location</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter city or zip code" 
-                    className="w-full h-12 px-4 rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Date</label>
-                  <input 
-                    type="date" 
-                    className="w-full h-12 px-4 rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <button 
-                  type="button" 
-                  className="btn-primary w-full py-3 mt-2 flex items-center justify-center"
-                  onClick={handleSearch} // Call handleSearch function on click
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  Search Doctors
-                </button>
-              </form>
+              <QuickAppointmentForm />
             </div>
           </div>
         </div>

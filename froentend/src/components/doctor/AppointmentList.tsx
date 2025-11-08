@@ -1,64 +1,59 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, User, Phone, Mail, CheckCircle, X, AlertTriangle } from 'lucide-react';
-import { appointmentService, AppointmentResponse } from '@/services/appointmentApi';
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
+import useAppointmentStore from '@/stores/appointmentStore';
+import type { AppointmentResponse } from '@/services/appointmentApi';
 
-interface AppointmentListProps {
-  doctorId: string;
-  onApprove: (appointmentId: string) => Promise<void>;
-  onReject: (appointmentId: string) => Promise<void>;
-}
-
-const AppointmentList: React.FC<AppointmentListProps> = ({ 
-  doctorId, 
-  onApprove, 
-  onReject 
-}) => {
+const AppointmentList: React.FC = () => {
   const { toast } = useToast();
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const {
+    doctorAppointments,
+    loadingDoctorAppointments,
+    fetchDoctorAppointments,
+    updateAppointmentStatus,
+  } = useAppointmentStore(state => ({
+    doctorAppointments: state.doctorAppointments,
+    loadingDoctorAppointments: state.loadingDoctorAppointments,
+    fetchDoctorAppointments: state.fetchDoctorAppointments,
+    updateAppointmentStatus: state.updateAppointmentStatus,
+  }));
 
   useEffect(() => {
-    fetchAppointments();
-    
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchAppointments, 5000);
-    return () => clearInterval(interval);
-  }, [doctorId]);
+    const load = async () => {
+      try {
+        await fetchDoctorAppointments();
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error?.message || 'Failed to load appointments. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
 
-  const fetchAppointments = async () => {
-    try {
-      const data = await appointmentService.getDoctorAppointments();
-      setAppointments(data);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load appointments. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    load();
+
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [fetchDoctorAppointments, toast]);
 
   const handleApprove = async (appointmentId: string) => {
     try {
       setActionLoading(appointmentId);
-      await onApprove(appointmentId);
-      await fetchAppointments(); // Refresh the list
-      
+      const updated = await updateAppointmentStatus(appointmentId, 'approved');
+
       toast({
-        title: "Appointment Approved",
-        description: "The appointment has been approved successfully.",
+        title: 'Appointment Approved',
+        description: `The appointment with ${updated.patientName} has been approved.`,
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to approve appointment.",
-        variant: "destructive"
+        title: 'Error',
+        description: error?.message || 'Failed to approve appointment.',
+        variant: 'destructive',
       });
     } finally {
       setActionLoading(null);
@@ -68,30 +63,30 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
   const handleReject = async (appointmentId: string, appointment: AppointmentResponse) => {
     try {
       setActionLoading(appointmentId);
-      await onReject(appointmentId);
-      await fetchAppointments(); // Refresh the list
-      
-      const refundMessage = appointment.paymentStatus === 'completed' 
-        ? "The appointment has been rejected and a refund will be processed within 24-48 hours."
-        : "The appointment has been rejected.";
-      
+      const updated = await updateAppointmentStatus(appointmentId, 'cancelled');
+
+      const refundMessage =
+        appointment.paymentStatus === 'completed'
+          ? 'The appointment has been rejected and a refund will be processed within 24-48 hours.'
+          : 'The appointment has been rejected.';
+
       toast({
-        title: "Appointment Rejected",
+        title: 'Appointment Rejected',
         description: refundMessage,
-        variant: "destructive"
+        variant: 'destructive',
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to reject appointment.",
-        variant: "destructive"
+        title: 'Error',
+        description: error?.message || 'Failed to reject appointment.',
+        variant: 'destructive',
       });
     } finally {
       setActionLoading(null);
     }
   };
 
-  if (loading) {
+  if (loadingDoctorAppointments) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
@@ -102,7 +97,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
     );
   }
 
-  if (!appointments.length) {
+  if (!doctorAppointments.length) {
     return (
       <div className="text-center py-12">
         <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -119,7 +114,15 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Your Appointments</h2>
         <button 
-          onClick={fetchAppointments}
+          onClick={() =>
+            fetchDoctorAppointments().catch(error =>
+              toast({
+                title: 'Error',
+                description: error?.message || 'Failed to refresh appointments.',
+                variant: 'destructive',
+              }),
+            )
+          }
           className="text-sm text-primary hover:underline"
         >
           Refresh
@@ -127,7 +130,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({
       </div>
       
       <div className="space-y-4">
-        {appointments.map(appointment => (
+        {doctorAppointments.map(appointment => (
           <div 
             key={appointment.id} 
             className="glass-card rounded-xl p-6 hover:shadow-md transition-shadow"

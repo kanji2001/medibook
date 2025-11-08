@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, Download, CreditCard, AlertTriangle, RefreshCw } from 'lucide-react';
-import { appointmentService, AppointmentResponse } from '@/services/appointmentApi';
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
+import useAppointmentStore from '@/stores/appointmentStore';
+import type { AppointmentResponse } from '@/services/appointmentApi';
 
 interface PatientAppointmentsProps {
   userId: string;
@@ -11,32 +12,32 @@ interface PatientAppointmentsProps {
 
 const PatientAppointments: React.FC<PatientAppointmentsProps> = ({ userId }) => {
   const { toast } = useToast();
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { appointments, loadingAppointments, fetchUserAppointments } = useAppointmentStore(
+    state => ({
+      appointments: state.appointments,
+      loadingAppointments: state.loadingAppointments,
+      fetchUserAppointments: state.fetchUserAppointments,
+    }),
+  );
 
   useEffect(() => {
-    fetchAppointments();
-    
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchAppointments, 5000);
-    return () => clearInterval(interval);
-  }, [userId]);
+    const load = async () => {
+      try {
+        await fetchUserAppointments();
+      } catch (err: any) {
+        toast({
+          title: 'Error',
+          description: err?.message || 'Failed to load your appointments. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
 
-  const fetchAppointments = async () => {
-    try {
-      const data = await appointmentService.getUserAppointments();
-      setAppointments(data);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load your appointments. Please try again.",
-        variant: "destructive"
-      });
-      console.error("Error fetching patient appointments:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    load();
+
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [userId, fetchUserAppointments, toast]);
 
   const downloadAppointmentSlip = (appointment: AppointmentResponse) => {
     toast({
@@ -63,7 +64,7 @@ const PatientAppointments: React.FC<PatientAppointmentsProps> = ({ userId }) => 
     return null;
   };
 
-  if (loading) {
+  if (loadingAppointments) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
@@ -96,7 +97,13 @@ const PatientAppointments: React.FC<PatientAppointmentsProps> = ({ userId }) => 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Your Appointments</h2>
         <button 
-          onClick={fetchAppointments}
+          onClick={() => fetchUserAppointments().catch(err => {
+            toast({
+              title: 'Error',
+              description: err?.message || 'Failed to refresh appointments.',
+              variant: 'destructive',
+            });
+          })}
           className="text-sm text-primary hover:underline flex items-center"
         >
           <RefreshCw className="h-3 w-3 mr-1" />

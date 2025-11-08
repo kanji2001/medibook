@@ -8,13 +8,15 @@ import DoctorSidebar from '@/components/doctor/DoctorSidebar';
 import AppointmentList from '@/components/doctor/AppointmentList';
 import AvailabilitySettings from '@/components/doctor/AvailabilitySettings';
 import { Availability } from '@/context/AuthContext';
-import { appointmentService, AppointmentResponse } from '@/services/appointmentApi';
+import useAppointmentStore from '@/stores/appointmentStore';
 
 const DoctorDashboard = () => {
   const { user, updateUserAvailability } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('appointments');
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const { fetchDoctorAppointments } = useAppointmentStore(state => ({
+    fetchDoctorAppointments: state.fetchDoctorAppointments,
+  }));
   const [availability, setAvailability] = useState<Availability>({
     status: 'available',
     workingHours: [
@@ -35,77 +37,22 @@ const DoctorDashboard = () => {
     }
   }, [user]);
 
-  // Load doctor appointments
   useEffect(() => {
-    if (user?.id) {
-      fetchAppointments();
-    }
-  }, [user]);
-
-  const fetchAppointments = async () => {
-    try {
-      if (!user?.id) return;
-      const data = await appointmentService.getDoctorAppointments();
-      setAppointments(data);
-    } catch (error) {
+    if (!user?.id) return;
+    fetchDoctorAppointments().catch(error => {
       console.error('Error fetching doctor appointments:', error);
       toast({
         title: 'Error',
         description: 'Failed to load appointments. Please try again later.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
-    }
-  };
+    });
+  }, [user, fetchDoctorAppointments, toast]);
 
   const handleAvailabilityChange = (newAvailability: Availability) => {
     setAvailability(newAvailability);
     // Update user availability in context and localStorage
     updateUserAvailability(newAvailability);
-  };
-
-  const handleAppointmentApprove = async (appointmentId: string) => {
-    try {
-      const updatedAppointment = await appointmentService.updateAppointmentStatus(appointmentId, 'approved');
-      
-      // Update local state
-      setAppointments(prev => 
-        prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt)
-      );
-      
-      toast({
-        title: "Appointment Approved",
-        description: `You have approved the appointment with ${updatedAppointment.patientName}.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to approve appointment. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleAppointmentReject = async (appointmentId: string) => {
-    try {
-      const updatedAppointment = await appointmentService.updateAppointmentStatus(appointmentId, 'cancelled');
-      
-      // Update local state
-      setAppointments(prev => 
-        prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt)
-      );
-      
-      toast({
-        title: "Appointment Rejected",
-        description: `You have rejected the appointment with ${updatedAppointment.patientName}.`,
-        variant: "destructive"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reject appointment. Please try again.",
-        variant: "destructive"
-      });
-    }
   };
 
   return (
@@ -123,13 +70,7 @@ const DoctorDashboard = () => {
             
             {/* Main Content */}
             <div className="flex-grow">
-              {activeTab === 'appointments' && (
-                <AppointmentList 
-                  doctorId={user?.id || ''} 
-                  onApprove={handleAppointmentApprove}
-                  onReject={handleAppointmentReject}
-                />
-              )}
+              {activeTab === 'appointments' && <AppointmentList />}
 
               {activeTab === 'availability' && (
                 <AvailabilitySettings 

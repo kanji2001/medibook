@@ -2,8 +2,8 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { appointmentService } from '@/services/appointmentApi';
 import { CreditCard, Wallet, Check, Loader2 } from 'lucide-react';
+import useAppointmentStore from '@/stores/appointmentStore';
 import PaymentButton, { PaymentSuccessPayload } from './PaymentButton';
 
 interface PaymentOptionsProps {
@@ -15,8 +15,13 @@ interface PaymentOptionsProps {
 const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, onSuccess }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [paymentMethod, setPaymentMethod] = useState<'online' | 'gpay' | 'paytm' | 'phonepe' | 'offline' | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<
+    'online' | 'gpay' | 'paytm' | 'phonepe' | 'offline' | null
+  >(null);
+  const { processPayment, processingPayment } = useAppointmentStore(state => ({
+    processPayment: state.processPayment,
+    processingPayment: state.processingPayment,
+  }));
 
   const payableAmountRupees = useMemo(() => (amount && amount > 0 ? amount / 100 : 0), [amount]);
   const isDigitalWallet = paymentMethod === 'gpay' || paymentMethod === 'paytm' || paymentMethod === 'phonepe';
@@ -36,10 +41,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
     }
 
     try {
-      setProcessing(true);
-
-      // Process the payment through the API
-      await appointmentService.processPayment(appointmentId, paymentMethod, {
+      await processPayment(appointmentId, paymentMethod, {
         amount,
         currency: 'INR',
       });
@@ -62,8 +64,6 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
         description: error.message || "Failed to process payment. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -74,8 +74,7 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
     }
 
     try {
-      setProcessing(true);
-      await appointmentService.processPayment(appointmentId, paymentMethod, {
+      await processPayment(appointmentId, paymentMethod, {
         amount,
         currency: payload.order.currency ?? 'INR',
         razorpay: {
@@ -103,8 +102,6 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
         description: error.message || "We could not update your appointment status. Please contact support.",
         variant: "destructive",
       });
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -206,10 +203,10 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
         {paymentMethod === 'offline' ? (
           <button
             onClick={handleOfflineConfirmation}
-            disabled={!paymentMethod || processing}
+            disabled={!paymentMethod || processingPayment}
             className="btn-primary"
           >
-            {processing ? (
+            {processingPayment ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Processing...
@@ -221,11 +218,11 @@ const PaymentOptions: React.FC<PaymentOptionsProps> = ({ appointmentId, amount, 
         ) : isDigitalWallet ? (
           <PaymentButton
             amountInPaise={amount}
-            label={processing ? 'Finalising...' : 'Proceed to Payment'}
+            label={processingPayment ? 'Finalising...' : 'Proceed to Payment'}
             className="btn-primary"
             onSuccess={handleOnlinePaymentSuccess}
             onError={handleOnlinePaymentError}
-            disabled={processing}
+            disabled={processingPayment}
           />
         ) : (
           <button

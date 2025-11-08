@@ -161,6 +161,11 @@ export const adminService = {
     const response = await api.get('/admin/users');
     return response.data;
   },
+
+  getAppointments: async () => {
+    const response = await api.get('/admin/appointments');
+    return response.data;
+  },
   
   updateUser: async (id: string, userData: any) => {
     const response = await api.put(`/admin/users/${id}`, userData);
