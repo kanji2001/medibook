@@ -119,69 +119,72 @@ const Appointment = () => {
     setSelectedDateTime({ date, time });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleProceedFromTimeSelection = () => {
+    if (!selectedDateTime) {
+      toast({
+        title: 'Select a time',
+        description: 'Please choose a date and time before continuing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setStep(3);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (step === 2 && selectedDateTime) {
-      setStep(3);
-    } else if (step === 3) {
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all required fields.",
-          variant: "destructive"
-        });
-        return;
+  const handlePatientInfoSubmit = async (values: PatientFormData) => {
+    if (!selectedDoctor || !selectedDateTime) {
+      toast({
+        title: 'Unable to create appointment',
+        description: 'Please select a doctor and time slot before submitting your details.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setFormData(values);
+
+    try {
+      toast({
+        title: 'Creating Appointment',
+        description: 'Setting up your appointment...',
+        variant: 'default',
+      });
+
+      const appointmentData = {
+        doctorId: selectedDoctor.id,
+        date: selectedDateTime.date.toISOString().split('T')[0],
+        time: selectedDateTime.time,
+        patientName: `${values.firstName} ${values.lastName}`.trim(),
+        patientEmail: values.email,
+        patientPhone: values.phone,
+        reason: values.reason,
+        notes: values.notes,
+      };
+
+      const response = await appointmentService.createAppointment(appointmentData);
+      console.log('Created appointment response:', response);
+
+      if (response && response.data && response.data.id) {
+        setCreatedAppointmentId(response.data.id);
+        setAppointmentStatus('booked');
+        setStep(4); // Go to payment step
+      } else {
+        console.error('Invalid appointment creation response:', response);
+        throw new Error('Failed to create appointment');
       }
 
-      try {
-        toast({
-          title: "Creating Appointment",
-          description: "Setting up your appointment...",
-          variant: "default"
-        });
-
-        const appointmentData = {
-          doctorId: selectedDoctor.id,
-          date: selectedDateTime!.date.toISOString().split('T')[0],
-          time: selectedDateTime!.time,
-          patientName: `${formData.firstName} ${formData.lastName}`,
-          patientEmail: formData.email,
-          patientPhone: formData.phone,
-          reason: formData.reason,
-          notes: formData.notes,
-        };
-
-        const response = await appointmentService.createAppointment(appointmentData);
-        console.log('Created appointment response:', response);
-        
-        if (response && response.data && response.data.id) {
-          setCreatedAppointmentId(response.data.id);
-          setAppointmentStatus('booked');
-          setStep(4); // Go to payment step
-        } else {
-          console.error('Invalid appointment creation response:', response);
-          throw new Error('Failed to create appointment');
-        }
-        
-        toast({
-          title: "Appointment Created!",
-          description: "Please proceed with payment to confirm your appointment.",
-          variant: "default"
-        });
-      } catch (error: any) {
-        console.error('Error creating appointment:', error);
-        toast({
-          title: "Error",
-          description: error.message || 'Failed to create appointment. Please try again.',
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: 'Appointment Created!',
+        description: 'Please proceed with payment to confirm your appointment.',
+        variant: 'default',
+      });
+    } catch (error: any) {
+      console.error('Error creating appointment:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create appointment. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -229,15 +232,14 @@ const Appointment = () => {
               selectedDoctor={selectedDoctor}
               onSelectDateTime={handleDateTimeSelect}
               selectedDateTime={selectedDateTime}
-              onContinue={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+              onContinue={handleProceedFromTimeSelection}
             />
           )}
 
           {step === 3 && (
             <PatientInfoForm
-              formData={formData}
-              onInputChange={handleInputChange}
-              onSubmit={handleSubmit}
+              defaultValues={formData}
+              onSubmit={handlePatientInfoSubmit}
               onBack={() => setStep(2)}
             />
           )}
