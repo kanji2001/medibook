@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 
 const phoneRegex = /^[0-9()+\-.\s]{7,}$/;
 const urlRegex = /^https?:\/\/.+/i;
@@ -88,6 +89,8 @@ const DoctorProfilePanel = ({ profile, loading, saving, onSave }: DoctorProfileP
   const [formMessage, setFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   );
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState<DoctorProfileFormPayload | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -108,30 +111,41 @@ const DoctorProfilePanel = ({ profile, loading, saving, onSave }: DoctorProfileP
   };
 
   const onSubmit = async (values: DoctorProfileFormValues) => {
+    const payload: DoctorProfileFormPayload = {
+      name: values.name.trim(),
+      avatar: values.avatar || undefined,
+      phone: values.phone || undefined,
+      specialty: values.specialty.trim(),
+      experience: Number(values.experience),
+      location: values.location.trim(),
+      address: values.address.trim(),
+      about: values.about.trim(),
+      education: splitAndClean(values.education),
+      languages: splitAndClean(values.languages),
+      specializations: splitAndClean(values.specializations),
+      insurances: splitAndClean(values.insurances),
+      image: values.image || undefined,
+    };
+
+    setPendingPayload(payload);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (!pendingPayload) return;
+
     setFormMessage(null);
     try {
-      await onSave({
-        name: values.name.trim(),
-        avatar: values.avatar || undefined,
-        phone: values.phone || undefined,
-        specialty: values.specialty.trim(),
-        experience: Number(values.experience),
-        location: values.location.trim(),
-        address: values.address.trim(),
-        about: values.about.trim(),
-        education: splitAndClean(values.education),
-        languages: splitAndClean(values.languages),
-        specializations: splitAndClean(values.specializations),
-        insurances: splitAndClean(values.insurances),
-        image: values.image || undefined,
-      });
+      await onSave(pendingPayload);
       setFormMessage({ type: 'success', text: 'Profile updated successfully.' });
+      setPendingPayload(null);
+      setConfirmOpen(false);
     } catch (error: any) {
       setFormMessage({
         type: 'error',
         text: error?.message || 'Failed to update profile. Please try again.',
       });
-      throw error;
+      setConfirmOpen(false);
     }
   };
 
@@ -308,6 +322,23 @@ const DoctorProfilePanel = ({ profile, loading, saving, onSave }: DoctorProfileP
           </span>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={open => {
+          setConfirmOpen(open);
+          if (!open) {
+            setPendingPayload(null);
+          }
+        }}
+        title="Save profile changes?"
+        description="These updates will immediately change what patients see on your profile."
+        confirmLabel="Confirm Save"
+        confirmLoadingLabel="Saving..."
+        confirmLoading={saving}
+        onConfirm={handleConfirmSave}
+        onCancel={() => setPendingPayload(null)}
+      />
     </div>
   );
 };

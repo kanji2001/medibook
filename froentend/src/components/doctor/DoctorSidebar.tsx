@@ -1,6 +1,8 @@
 
+import { useState } from 'react';
 import { Calendar, Clock, Users, MessageSquare, Settings, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 
 interface DoctorSidebarProps {
   activeTab: string;
@@ -10,6 +12,7 @@ interface DoctorSidebarProps {
 
 const DoctorSidebar = ({ activeTab, setActiveTab, specialty }: DoctorSidebarProps) => {
   const { user, logout } = useAuth();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   const navItems: Array<{
     key: string;
@@ -40,13 +43,22 @@ const DoctorSidebar = ({ activeTab, setActiveTab, specialty }: DoctorSidebarProp
           <p className="text-sm text-muted-foreground mb-4">
             {specialty || user?.specialty || 'Doctor'}
           </p>
-          <button 
-            onClick={logout}
-            className="btn-outline w-full text-sm py-1.5"
-          >
+          <button className="btn-outline w-full text-sm py-1.5" onClick={() => setConfirmSignOut(true)}>
             Sign Out
           </button>
         </div>
+        <ConfirmDialog
+          open={confirmSignOut}
+          onOpenChange={setConfirmSignOut}
+          title="Sign out?"
+          description="You'll be logged out of your doctor dashboard. You can log in again at any time."
+          confirmLabel="Sign Out"
+          confirmTone="destructive"
+          onConfirm={() => {
+            setConfirmSignOut(false);
+            logout();
+          }}
+        />
         
         {/* Navigation */}
         <div className="glass-card rounded-xl overflow-hidden">

@@ -5,10 +5,15 @@ import { Calendar, Clock, User, Phone, Mail, CheckCircle, X, AlertTriangle } fro
 import AppointmentStatus from '@/components/ui/AppointmentStatus';
 import useAppointmentStore from '@/stores/appointmentStore';
 import type { AppointmentResponse } from '@/services/appointmentApi';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 
 const AppointmentList: React.FC = () => {
   const { toast } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingReject, setPendingReject] = useState<{
+    appointmentId: string;
+    appointment: AppointmentResponse;
+  } | null>(null);
   const {
     doctorAppointments,
     loadingDoctorAppointments,
@@ -78,6 +83,15 @@ const AppointmentList: React.FC = () => {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!pendingReject) return;
+    try {
+      await handleReject(pendingReject.appointmentId, pendingReject.appointment);
+    } finally {
+      setPendingReject(null);
     }
   };
 
@@ -195,7 +209,9 @@ const AppointmentList: React.FC = () => {
                       Approve
                     </button>
                     <button
-                      onClick={() => handleReject(appointment.id, appointment)}
+                      onClick={() =>
+                        setPendingReject({ appointmentId: appointment.id, appointment })
+                      }
                       disabled={actionLoading === appointment.id}
                       className="btn-outline border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center"
                     >
@@ -207,7 +223,9 @@ const AppointmentList: React.FC = () => {
                 
                 {(appointment.status === 'approved' || appointment.status === 'confirmed') && (
                   <button
-                    onClick={() => handleReject(appointment.id, appointment)}
+                    onClick={() =>
+                      setPendingReject({ appointmentId: appointment.id, appointment })
+                    }
                     disabled={actionLoading === appointment.id}
                     className="btn-outline border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center"
                   >
@@ -237,6 +255,21 @@ const AppointmentList: React.FC = () => {
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingReject)}
+        onOpenChange={open => {
+          if (!open) setPendingReject(null);
+        }}
+        title="Reject this appointment?"
+        description="This action cannot be undone. The patient will be notified and, if payment was completed, a refund will be initiated."
+        confirmLabel="Confirm Reject"
+        confirmLoadingLabel="Rejecting..."
+        confirmTone="destructive"
+        confirmLoading={actionLoading !== null}
+        confirmDisabled={actionLoading !== null}
+        onConfirm={confirmReject}
+        onCancel={() => setPendingReject(null)}
+      />
     </div>
   );
 };

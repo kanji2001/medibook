@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, User, Calendar, LogOut, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -124,8 +126,8 @@ const Navbar = () => {
                 <span>Dashboard</span>
               </Link>
               <button
-                onClick={logout}
                 className="btn-outline py-2 px-3 flex items-center"
+                onClick={() => setConfirmLogoutOpen(true)}
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 <span>Logout</span>
@@ -208,7 +210,7 @@ const Navbar = () => {
                   <User className="w-4 h-4 mr-2" />
                   <span>Dashboard</span>
                 </Link>
-                <button onClick={logout} className="btn-outline py-3">
+                <button className="btn-outline py-3" onClick={() => setConfirmLogoutOpen(true)}>
                   <LogOut className="w-4 h-4 mr-2" />
                   <span>Logout</span>
                 </button>
@@ -225,6 +227,19 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmLogoutOpen}
+        onOpenChange={setConfirmLogoutOpen}
+        title="Log out?"
+        description="You'll be signed out of your account and redirected to the login page."
+        confirmLabel="Logout"
+        confirmTone="destructive"
+        onConfirm={() => {
+          setConfirmLogoutOpen(false);
+          setIsOpen(false);
+          logout();
+        }}
+      />
     </nav>
   );
 };
