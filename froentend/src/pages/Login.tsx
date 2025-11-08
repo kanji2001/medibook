@@ -1,32 +1,61 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Mail, Lock, LogIn, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email is required')
+    .email('Enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const { login, loading } = useAuth();
-  const { toast } = useToast(); // ✅ Initialize toast
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-    const navigate = useNavigate();
-  
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: ''
+    }
+  });
+
+  const onSubmit = async (values: LoginFormValues) => {
+    clearErrors('root');
     try {
-      await login(email, password);
+      await login(values.email, values.password);
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
       });
-      navigate('/')
+      navigate('/');
     } catch (error: any) {
+      const message = error?.message || 'Invalid email or password.';
+      setError('root', { type: 'server', message });
       toast({
         title: 'Login Failed',
-        description: error.message || 'Invalid email or password.',
+        description: message,
+        variant: 'destructive'
       });
     }
   };
@@ -45,7 +74,7 @@ const Login = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
               {/* Email */}
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="email">
@@ -58,13 +87,14 @@ const Login = () => {
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    {...register('email')}
                     placeholder="Enter your email"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                )}
               </div>
 
               {/* Password */}
@@ -84,22 +114,29 @@ const Login = () => {
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    {...register('password')}
                     placeholder="Enter your password"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                )}
               </div>
+
+              {errors.root && (
+                <div className="text-sm text-destructive">
+                  {errors.root.message}
+                </div>
+              )}
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isSubmitting}
                 className="btn-primary w-full h-12 flex items-center justify-center"
               >
-                {loading ? (
+                {loading || isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>

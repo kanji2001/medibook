@@ -1,0 +1,21 @@
+# Node modules
+backend/node_modules/
+froentend/node_modules/
+
+# Environment files
+backend/.env
+froentend/.env
+.env
+.env.*
+
+# Build outputs
+froentend/dist/
+
+# Logs and temp files
+*.log
+backend/temp/
+
+# Misc
+.DS_Store
+Thumbs.db
+

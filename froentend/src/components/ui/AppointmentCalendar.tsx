@@ -9,16 +9,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { createAppointment } from '@/utils/appointmentUtils';
-import { useAuth } from '@/context/AuthContext';
 
 interface AppointmentCalendarProps {
   onSelectDateTime: (date: Date, time: string) => void;
-  doctorId: string;
-  doctorName: string;
-  doctorSpecialty: string;
-  doctorImage: string;
 }
 
 const timeSlots = [
@@ -39,24 +32,20 @@ const getAvailableSlots = (date: Date): string[] => {
   return timeSlots.filter(() => Math.random() > 0.3);
 };
 
-const AppointmentCalendar = ({ 
-  onSelectDateTime, 
-  doctorId, 
-  doctorName, 
-  doctorSpecialty, 
-  doctorImage 
+const AppointmentCalendar = ({
+  onSelectDateTime
 }: AppointmentCalendarProps) => {
   const [date, setDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>();
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (selectedDate) {
       setDate(selectedDate);
       setSelectedTime(undefined); // Reset time when date changes
       setAvailableSlots(getAvailableSlots(selectedDate));
+      setIsCalendarOpen(false);
     }
   };
 
@@ -64,27 +53,6 @@ const AppointmentCalendar = ({
     setSelectedTime(time);
     if (date) {
       onSelectDateTime(date, time);
-      
-      // If user is logged in, create an appointment in localStorage
-      if (user) {
-        createAppointment({
-          doctorId,
-          userId: user.id,
-          patientName: user.name,
-          doctorName,
-          doctorSpecialty,
-          doctorImage,
-          date: format(date, 'yyyy-MM-dd'),
-          time,
-          status: 'pending',
-          notes: 'New appointment booking'
-        });
-        
-        toast({
-          title: "Appointment Booked",
-          description: `Your appointment with Dr. ${doctorName} has been scheduled for ${format(date, 'PP')} at ${time}.`,
-        });
-      }
     }
   };
 
@@ -92,7 +60,7 @@ const AppointmentCalendar = ({
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-2">Select Date</h3>
-        <Popover>
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
           <PopoverTrigger asChild>
             <button
               className={cn(

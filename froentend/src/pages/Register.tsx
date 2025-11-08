@@ -1,58 +1,106 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Mail, Lock, User, UserPlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
+const registerSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, 'Name must be at least 3 characters'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email is required')
+    .email('Enter a valid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[A-Za-z])(?=.*\d).+$/,
+      'Password must contain at least one letter and one number'
+    ),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  role: z.enum(['patient', 'doctor'])
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: 'Passwords do not match',
+    path: ['confirmPassword']
+  }
+);
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Register = () => {
-  const { register, loading } = useAuth();
- 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('patient');
-  const [error, setError] = useState('');
+  const { register: registerUser, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      toast({
-        title: 'Error',
-        description: 'Passwords do not match.',
-        variant: 'destructive',
-      });
-      return;
+  const {
+    register: formRegister,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting }
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      role: 'patient'
     }
+  });
 
+  const selectedRole = watch('role');
+
+  useEffect(() => {
+    if (errors.confirmPassword?.type === 'custom') {
+      toast({
+        title: 'Validation error',
+        description: errors.confirmPassword.message,
+        variant: 'destructive'
+      });
+    }
+  }, [errors.confirmPassword, toast]);
+
+  const onSubmit = async (values: RegisterFormValues) => {
+    clearErrors('root');
     try {
-      await register(name, email, password, role);
+      await registerUser(values.name, values.email, values.password, values.role as UserRole);
 
       toast({
         title: 'Registration successful',
-        description: 'You can now log in with your new account.',
+        description: 'You can now log in with your new account.'
       });
 
-      // Redirect to login after short delay
-      setTimeout(() => {
-        navigate('/login');
-      }, 1000);
+      reset({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: values.role
+      });
+
+      setTimeout(() => navigate('/login'), 800);
     } catch (err: any) {
       const errorMessage = err?.message || 'Something went wrong. Try again.';
-      setError(errorMessage);
+      setError('root', { type: 'server', message: errorMessage });
 
       toast({
         title: 'Registration failed',
         description: errorMessage,
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
@@ -71,7 +119,7 @@ const Register = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="name">
                   Full Name
@@ -83,13 +131,14 @@ const Register = () => {
                   <input
                     id="name"
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
+                    {...formRegister('name')}
                     placeholder="Enter your full name"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -103,13 +152,14 @@ const Register = () => {
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    {...formRegister('email')}
                     placeholder="Enter your email"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -123,13 +173,14 @@ const Register = () => {
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    {...formRegister('password')}
                     placeholder="Create a password"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -143,13 +194,14 @@ const Register = () => {
                   <input
                     id="confirmPassword"
                     type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
+                    {...formRegister('confirmPassword')}
                     placeholder="Confirm your password"
                     className="pl-10 w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -159,8 +211,8 @@ const Register = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    onClick={() => setRole('patient')}
-                    className={`flex items-center justify-center px-4 py-2 rounded-md border transition-colors ${role === 'patient'
+                    onClick={() => setValue('role', 'patient', { shouldValidate: true })}
+                    className={`flex items-center justify-center px-4 py-2 rounded-md border transition-colors ${selectedRole === 'patient'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background border-input hover:bg-muted'
                       }`}
@@ -169,8 +221,8 @@ const Register = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole('doctor')}
-                    className={`flex items-center justify-center px-4 py-2 rounded-md border transition-colors ${role === 'doctor'
+                    onClick={() => setValue('role', 'doctor', { shouldValidate: true })}
+                    className={`flex items-center justify-center px-4 py-2 rounded-md border transition-colors ${selectedRole === 'doctor'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background border-input hover:bg-muted'
                       }`}
@@ -180,16 +232,16 @@ const Register = () => {
                 </div>
               </div>
 
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
+              {errors.root && (
+                <div className="text-red-500 text-sm">{errors.root.message}</div>
               )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isSubmitting}
                 className="btn-primary w-full h-12 flex items-center justify-center"
               >
-                {loading ? (
+                {loading || isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>

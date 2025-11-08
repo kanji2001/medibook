@@ -11,7 +11,6 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const doctorRoutes = require('./routes/doctors');
 const appointmentRoutes = require('./routes/appointments');
-const paymentRoutes = require('./routes/payments');
 const adminRoutes = require('./routes/admin');
 
 // Load environment variables
@@ -49,7 +48,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Error handling middleware

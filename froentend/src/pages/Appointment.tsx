@@ -13,7 +13,7 @@ import AppointmentSteps from '@/components/appointment/AppointmentSteps';
 import DoctorSelection from '@/components/appointment/DoctorSelection';
 import AppointmentTimeSelection from '@/components/appointment/AppointmentTimeSelection';
 import PatientInfoForm, { PatientFormData } from '@/components/appointment/PatientInfoForm';
-import RazorpayCheckout from '@/components/payment/RazorpayCheckout';
+import PaymentOptions from '@/components/payment/PaymentOptions';
 import AppointmentConfirmation from '@/components/appointment/AppointmentConfirmation';
 
 function useQuery() {
@@ -185,13 +185,15 @@ const Appointment = () => {
     }
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (_appointmentId: string, method: string) => {
     setAppointmentStatus('confirmed');
     setStep(5); // Go to confirmation step
     
     toast({
-      title: "Payment Successful!",
-      description: "Your appointment has been confirmed.",
+      title: method === 'offline' ? "Appointment Confirmed!" : "Payment Successful!",
+      description: method === 'offline'
+        ? "Your appointment has been booked. Please complete payment at the hospital."
+        : "Your appointment has been confirmed.",
       variant: "default"
     });
   };
@@ -248,12 +250,21 @@ const Appointment = () => {
                   Your appointment has been created. Please complete payment to confirm.
                 </p>
               </div>
-              <RazorpayCheckout
-                appointmentId={createdAppointmentId}
-                amount={selectedDoctor.consultationFee}
-                onSuccess={handlePaymentSuccess}
-                onCancel={handlePaymentCancel}
-              />
+              <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+                <PaymentOptions
+                  appointmentId={createdAppointmentId}
+                  amount={selectedDoctor.consultationFee}
+                  onSuccess={handlePaymentSuccess}
+                />
+                <div className="pt-4 border-t border-border text-center">
+                  <button
+                    onClick={handlePaymentCancel}
+                    className="w-full py-2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel & Pay Later
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

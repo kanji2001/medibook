@@ -155,42 +155,6 @@ export const appointmentService = {
   }
 };
 
-// Payment services - Updated for Razorpay
-export const paymentService = {
-  // Create a payment order for an appointment
-  createPayment: async (appointmentId: string, paymentMethod: string) => {
-    const response = await api.post('/payments/create', { 
-      appointmentId, 
-      paymentMethod 
-    });
-    return response.data;
-  },
-  
-  // Verify a Razorpay payment
-  verifyPayment: async (
-    appointmentId: string, 
-    razorpay_order_id: string,
-    razorpay_payment_id: string,
-    razorpay_signature: string
-  ) => {
-    const response = await api.post('/payments/verify', { 
-      appointmentId,
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    });
-    return response.data;
-  },
-
-  // Process refund
-  processRefund: async (appointmentId: string) => {
-    const response = await api.post('/payments/refund', { 
-      appointmentId 
-    });
-    return response.data;
-  }
-};
-
 // Admin services
 export const adminService = {
   getAllUsers: async () => {
@@ -213,6 +177,5 @@ export default {
   authService,
   doctorService,
   appointmentService,
-  paymentService,
   adminService
 };

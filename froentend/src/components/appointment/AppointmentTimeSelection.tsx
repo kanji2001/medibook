@@ -50,10 +50,6 @@ const AppointmentTimeSelection = ({
         
         <AppointmentCalendar 
           onSelectDateTime={onSelectDateTime} 
-          doctorId={selectedDoctor.id}
-          doctorName={selectedDoctor.name}
-          doctorSpecialty={selectedDoctor.specialty}
-          doctorImage={selectedDoctor.image}
         />
       </div>
       

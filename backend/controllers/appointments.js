@@ -2,18 +2,10 @@
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
-const Payment = require('../models/Payment');
-const Razorpay = require('razorpay');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
 
 // Helper function to send email with appointment details
 const sendAppointmentEmail = async (appointment, isPaid) => {
@@ -29,8 +21,14 @@ const sendAppointmentEmail = async (appointment, isPaid) => {
       }
     });
     
+    // Ensure temp directory exists
+    const tempDir = path.join(__dirname, '../temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
     // Create PDF appointment slip
-    const pdfPath = path.join(__dirname, '../temp', `appointment_${appointment._id}.pdf`);
+    const pdfPath = path.join(tempDir, `appointment_${appointment._id}.pdf`);
     const doc = new PDFDocument();
     const writeStream = fs.createWriteStream(pdfPath);
     
@@ -295,71 +293,17 @@ exports.updateAppointmentStatus = async (req, res, next) => {
       });
     }
 
-    // Handle rejection with refund logic for paid appointments
+    // Handle cancellation for paid appointments
     if (status === 'cancelled' && appointment.paymentStatus === 'completed') {
-      console.log("Processing refund for cancelled appointment");
-      
-      try {
-        // Find the payment record
-        const payment = await Payment.findOne({ 
-          appointmentId: appointment._id,
-          status: 'completed'
-        });
+      appointment.status = 'cancelled';
+      appointment.paymentStatus = 'refund_pending';
+      await appointment.save();
 
-        if (payment && payment.razorpayPaymentId) {
-          // Process refund via Razorpay
-          const refund = await razorpay.payments.refund(payment.razorpayPaymentId, {
-            amount: payment.amount,
-            speed: 'normal',
-            notes: {
-              reason: 'Doctor rejected appointment',
-              appointmentId: appointment._id.toString()
-            }
-          });
-
-          // Update payment record
-          payment.refundId = refund.id;
-          payment.refundStatus = 'processed';
-          payment.refundAmount = refund.amount;
-          await payment.save();
-
-          // Update appointment status
-          appointment.status = 'cancelled';
-          appointment.paymentStatus = 'refunded';
-          await appointment.save();
-
-          console.log("Refund processed successfully:", refund);
-          
-          return res.status(200).json({
-            success: true,
-            data: appointment,
-            message: 'Appointment cancelled and refund processed. Amount will be credited within 24-48 hours.'
-          });
-        } else {
-          // No payment found or payment ID missing
-          appointment.status = status;
-          await appointment.save();
-          
-          return res.status(200).json({
-            success: true,
-            data: appointment,
-            message: 'Appointment cancelled.'
-          });
-        }
-      } catch (refundError) {
-        console.error("Refund processing error:", refundError);
-        
-        // Update appointment status even if refund fails
-        appointment.status = 'cancelled';
-        appointment.paymentStatus = 'refund_pending';
-        await appointment.save();
-        
-        return res.status(200).json({
-          success: true,
-          data: appointment,
-          message: 'Appointment cancelled. Refund processing failed - please contact support.'
-        });
-      }
+      return res.status(200).json({
+        success: true,
+        data: appointment,
+        message: 'Appointment cancelled. Refund will be processed manually by our support team.'
+      });
     }
 
     console.log("Updating appointment status to:", status);
