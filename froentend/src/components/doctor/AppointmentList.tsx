@@ -6,6 +6,7 @@ import AppointmentStatus from '@/components/ui/AppointmentStatus';
 import useAppointmentStore from '@/stores/appointmentStore';
 import type { AppointmentResponse } from '@/services/appointmentApi';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AppointmentList: React.FC = () => {
   const { toast } = useToast();
@@ -97,11 +98,35 @@ const AppointmentList: React.FC = () => {
 
   if (loadingDoctorAppointments) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading appointments...</p>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-5 w-24" />
         </div>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="glass-card rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-24 h-6" />
+              <Skeleton className="w-16 h-6" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

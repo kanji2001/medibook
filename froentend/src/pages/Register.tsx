@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
@@ -11,6 +11,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { RegisterPayload } from '@/stores/authStore';
 
 const phoneRegex = /^[0-9()+\-\s]{7,}$/;
+
+const getDashboardPath = (role?: string) => {
+  switch (role) {
+    case 'doctor':
+      return '/doctor-dashboard';
+    case 'admin':
+      return '/admin-dashboard';
+    case 'patient':
+    default:
+      return '/patient-dashboard';
+  }
+};
 
 const registerSchema = z.object({
   name: z
@@ -128,7 +140,7 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Register = () => {
-  const { register: registerUser, loading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, register: registerUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const {
@@ -164,6 +176,7 @@ const Register = () => {
   });
 
   const selectedRole = watch('role');
+  const redirectRef = useRef(false);
 
   useEffect(() => {
     if (errors.confirmPassword?.type === 'custom') {
@@ -174,6 +187,18 @@ const Register = () => {
       });
     }
   }, [errors.confirmPassword, toast]);
+
+  useEffect(() => {
+    if (authLoading || redirectRef.current) return;
+    if (isAuthenticated && user) {
+      redirectRef.current = true;
+      toast({
+        title: 'Already signed in',
+        description: 'You are already logged in.',
+      });
+      navigate(getDashboardPath(user.role), { replace: true });
+    }
+  }, [authLoading, isAuthenticated, user, navigate, toast]);
 
   const onSubmit = async (values: RegisterFormValues) => {
     clearErrors('root');
@@ -244,9 +269,11 @@ const Register = () => {
         return;
       }
 
+      redirectRef.current = true;
+
       toast({
         title: 'Registration successful',
-        description: 'You can now log in with your new account.'
+        description: 'Your account is ready to use.',
       });
 
       reset({
@@ -269,7 +296,7 @@ const Register = () => {
         consultationFee: '',
       });
 
-      setTimeout(() => navigate('/login'), 800);
+      navigate(getDashboardPath(values.role), { replace: true });
     } catch (err: any) {
       const errorMessage = err?.message || 'Something went wrong. Try again.';
       setError('root', { type: 'server', message: errorMessage });
@@ -643,10 +670,10 @@ const Register = () => {
 
               <button
                 type="submit"
-                disabled={loading || isSubmitting}
+                disabled={authLoading || isSubmitting}
                 className="btn-primary w-full h-12 flex items-center justify-center"
               >
-                {loading || isSubmitting ? (
+                {authLoading || isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>

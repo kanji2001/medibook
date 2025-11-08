@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -8,12 +8,65 @@ import FeaturedDoctors from '@/components/home/FeaturedDoctors';
 import HowItWorks from '@/components/home/HowItWorks';
 import ChatBot from '@/components/ui/ChatBot';
 import { Medal, Clock, CreditCard, HeartPulse, ArrowRight, ChevronRight } from 'lucide-react';
+import useDoctorStore from '@/stores/doctorStore';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/context/AuthContext';
 
 const Index = () => {
   useEffect(() => {
     // Scroll to top when page loads
     window.scrollTo(0, 0);
   }, []);
+
+  const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const { doctors, loading, lastFetchedAt, fetchDoctors } = useDoctorStore(state => ({
+    doctors: state.doctors,
+    loading: state.loading,
+    lastFetchedAt: state.lastFetchedAt,
+    fetchDoctors: state.fetchDoctors,
+  }));
+
+  useEffect(() => {
+    if (!lastFetchedAt) {
+      fetchDoctors().catch(() => {
+        toast({
+          title: 'Error loading doctors',
+          description: 'We could not refresh the doctor list. Please try again later.',
+          variant: 'destructive',
+        });
+      });
+    }
+  }, [lastFetchedAt, fetchDoctors, toast]);
+
+  const specialtyStats = useMemo(() => {
+    if (!doctors.length) return [];
+    const counts = new Map<string, number>();
+    doctors.forEach(doctor => {
+      const key = doctor.specialty?.trim();
+      if (!key) return;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [doctors]);
+
+  const fallbackSpecialties = [
+    { name: 'Cardiology', count: 0 },
+    { name: 'Dermatology', count: 0 },
+    { name: 'Neurology', count: 0 },
+    { name: 'Pediatrics', count: 0 },
+    { name: 'Orthopedics', count: 0 },
+    { name: 'Ophthalmology', count: 0 },
+    { name: 'Gynecology', count: 0 },
+    { name: 'Psychiatry', count: 0 },
+  ];
+
+  const displayedSpecialties = specialtyStats.length ? specialtyStats : fallbackSpecialties;
 
   const benefits = [
     {
@@ -36,17 +89,6 @@ const Index = () => {
       title: "Quality Care",
       description: "Access to top-rated healthcare professionals nationwide."
     }
-  ];
-
-  const specialties = [
-    { name: "Cardiology", count: 45 },
-    { name: "Dermatology", count: 38 },
-    { name: "Neurology", count: 32 },
-    { name: "Pediatrics", count: 55 },
-    { name: "Orthopedics", count: 41 },
-    { name: "Ophthalmology", count: 29 },
-    { name: "Gynecology", count: 37 },
-    { name: "Psychiatry", count: 26 }
   ];
 
   return (
@@ -95,16 +137,28 @@ const Index = () => {
                 </p>
                 
                 <div className="grid grid-cols-2 gap-4 mt-6">
-                  {specialties.map((specialty, index) => (
-                    <Link 
-                      key={index}
-                      to={`/doctors?specialty=${specialty.name}`}
-                      className="flex items-center justify-between border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors"
-                    >
-                      <span className="font-medium">{specialty.name}</span>
-                      <span className="badge badge-outline">{specialty.count} doctors</span>
-                    </Link>
-                  ))}
+                  {loading && !doctors.length
+                    ? Array.from({ length: 8 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between border border-border rounded-lg p-3"
+                        >
+                          <Skeleton className="h-5 w-24" />
+                          <Skeleton className="h-5 w-16" />
+                        </div>
+                      ))
+                    : displayedSpecialties.map((specialty, index) => (
+                        <Link
+                          key={index}
+                          to={`/doctors?specialty=${encodeURIComponent(specialty.name)}`}
+                          className="flex items-center justify-between border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors"
+                        >
+                          <span className="font-medium">{specialty.name}</span>
+                          <span className="badge badge-outline">
+                            {specialty.count} {specialty.count === 1 ? 'doctor' : 'doctors'}
+                          </span>
+                        </Link>
+                      ))}
                 </div>
                 
                 <div className="pt-4">
@@ -127,21 +181,22 @@ const Index = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-20 bg-gradient-to-r from-primary/10 to-blue-400/10">
-          <div className="container">
-            <div className="text-center max-w-2xl mx-auto">
-              <h2 className="heading-lg mb-4">Ready to Experience Better Healthcare?</h2>
-              <p className="text-muted-foreground mb-8">
-                Join thousands of patients who have simplified their healthcare journey with MediBook's easy appointment booking.
-              </p>
-              <Link to="/register" className="btn-primary inline-flex">
-                Get Started Now
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </Link>
+        {!isAuthenticated && (
+          <section className="py-20 bg-gradient-to-r from-primary/10 to-blue-400/10">
+            <div className="container">
+              <div className="text-center max-w-2xl mx-auto">
+                <h2 className="heading-lg mb-4">Ready to Experience Better Healthcare?</h2>
+                <p className="text-muted-foreground mb-8">
+                  Join thousands of patients who have simplified their healthcare journey with MediBook's easy appointment booking.
+                </p>
+                <Link to="/register" className="btn-primary inline-flex">
+                  Get Started Now
+                  <ChevronRight className="ml-2 w-5 h-5" />
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
       
       <ChatBot />

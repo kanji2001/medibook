@@ -335,6 +335,7 @@ const AdminDashboard = () => {
                     activeFilter={activeUserFilter}
                     onFilterSelect={handleStatsFilter}
                     onViewAppointments={handleViewAppointments}
+                    loading={loadingUsers && hydratedUsers.length === 0}
                   />
 
                   <UserFilters

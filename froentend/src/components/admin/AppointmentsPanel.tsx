@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Calendar } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AdminAppointment } from '@/stores/adminStore';
 
 interface AppointmentsPanelProps {
@@ -10,9 +11,24 @@ interface AppointmentsPanelProps {
 const AppointmentsPanel: FC<AppointmentsPanelProps> = ({ appointments, loading }) => {
   if (loading) {
     return (
-      <div className="text-center py-10">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="mt-4 text-muted-foreground">Loading appointments...</p>
+      <div className="space-y-3">
+        <div className="flex justify-between gap-4">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-6 w-24" />
+        </div>
+        <div className="rounded-xl border border-border overflow-hidden">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-24" />
+              <div className="flex justify-end">
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

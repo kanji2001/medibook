@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
@@ -21,10 +22,35 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const getDashboardPath = (role?: string) => {
+  switch (role) {
+    case 'doctor':
+      return '/doctor-dashboard';
+    case 'admin':
+      return '/admin-dashboard';
+    case 'patient':
+    default:
+      return '/patient-dashboard';
+  }
+};
+
 const Login = () => {
-  const { login, loading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, login } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const alreadyRedirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (authLoading || alreadyRedirectedRef.current) return;
+    if (isAuthenticated && user) {
+      alreadyRedirectedRef.current = true;
+      toast({
+        title: 'Already signed in',
+        description: 'You are already logged in.',
+      });
+      navigate(getDashboardPath(user.role), { replace: true });
+    }
+  }, [authLoading, isAuthenticated, user, navigate, toast]);
 
   const {
     register,
@@ -55,11 +81,14 @@ const Login = () => {
       return;
     }
 
+    alreadyRedirectedRef.current = true;
+    const target = getDashboardPath(result.role || user?.role);
+
     toast({
       title: 'Login Successful',
       description: 'Welcome back!',
     });
-    navigate('/');
+    navigate(target, { replace: true });
   };
 
   return (
@@ -135,10 +164,10 @@ const Login = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || isSubmitting}
+                disabled={authLoading || isSubmitting}
                 className="btn-primary w-full h-12 flex items-center justify-center"
               >
-                {loading || isSubmitting ? (
+                {authLoading || isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>

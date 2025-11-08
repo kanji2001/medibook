@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { CheckCircle, Clock, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AdminUser } from '@/stores/adminStore';
 
 interface UserListProps {
@@ -12,9 +13,25 @@ interface UserListProps {
 const UserList: FC<UserListProps> = ({ users, loading, onApproveDoctor, onRejectDoctor }) => {
   if (loading) {
     return (
-      <div className="text-center py-20">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="mt-4 text-muted-foreground">Loading users...</p>
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="glass-card rounded-xl p-5">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <Skeleton className="w-16 h-16 rounded-full" />
+              <div className="flex-grow space-y-3">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-32" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full sm:col-span-2" />
+                </div>
+              </div>
+              <Skeleton className="h-9 w-24" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

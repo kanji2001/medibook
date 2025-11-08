@@ -1,5 +1,13 @@
 
+import { useAuth } from '@/context/AuthContext';
+
 const CTASection = () => {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return null;
+  }
+
   return (
     <section className="py-16 bg-white">
       <div className="container">

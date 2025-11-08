@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const phoneRegex = /^[0-9()+\-.\s]{7,}$/;
 const urlRegex = /^https?:\/\/.+/i;
@@ -151,11 +152,32 @@ const DoctorProfilePanel = ({ profile, loading, saving, onSave }: DoctorProfileP
 
   if (loading) {
     return (
-      <div className="glass-card rounded-xl p-6 flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="mt-3 text-sm text-muted-foreground">Loading profile...</p>
+      <div className="glass-card rounded-xl p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-20 w-20 rounded-full" />
         </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-24 w-full" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-10 w-32" />
       </div>
     );
   }

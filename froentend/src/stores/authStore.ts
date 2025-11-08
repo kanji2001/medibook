@@ -169,7 +169,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      return { success: Boolean(user) };
+      return { success: Boolean(user), role: user?.role };
     } catch (error: any) {
       console.error('Login error:', error);
       set({

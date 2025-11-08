@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Calendar, Clock, User, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { UserFilter } from './types';
 
 interface UserStatsGridProps {
@@ -11,6 +12,7 @@ interface UserStatsGridProps {
   activeFilter: UserFilter;
   onFilterSelect: (filter: UserFilter) => void;
   onViewAppointments: () => void;
+  loading?: boolean;
 }
 
 const UserStatsGrid: FC<UserStatsGridProps> = ({
@@ -22,7 +24,24 @@ const UserStatsGrid: FC<UserStatsGridProps> = ({
   activeFilter,
   onFilterSelect,
   onViewAppointments,
+  loading = false,
 }) => {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="glass-card rounded-xl p-4 space-y-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-16" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const cards: Array<{
     key: UserFilter;
     label: string;

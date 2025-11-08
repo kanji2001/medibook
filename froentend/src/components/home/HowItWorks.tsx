@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Calendar, CheckCircle, ArrowRight, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const HowItWorks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate(); // React Router navigation
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated && isModalOpen) {
+      setIsModalOpen(false);
+    }
+  }, [isAuthenticated, isModalOpen]);
 
   const steps = [
     {
@@ -66,21 +74,23 @@ const HowItWorks = () => {
           ))}
         </div>
 
-        <div className="mt-16 text-center">
-          <div className="inline-block glass-card rounded-2xl p-6 max-w-2xl">
-            <h3 className="text-xl font-semibold mb-3">Ready to experience better healthcare?</h3>
-            <p className="text-muted-foreground mb-6">
-              Join thousands of patients who have simplified their healthcare journey with MediBook.
-            </p>
-            <button onClick={() => setIsModalOpen(true)} className="btn-primary">
-              Get Started Today
-            </button>
+        {!isAuthenticated && (
+          <div className="mt-16 text-center">
+            <div className="inline-block glass-card rounded-2xl p-6 max-w-2xl">
+              <h3 className="text-xl font-semibold mb-3">Ready to experience better healthcare?</h3>
+              <p className="text-muted-foreground mb-6">
+                Join thousands of patients who have simplified their healthcare journey with MediBook.
+              </p>
+              <button onClick={() => setIsModalOpen(true)} className="btn-primary">
+                Get Started Today
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal */}
-      {isModalOpen && (
+      {!isAuthenticated && isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-lg relative">
             <button
