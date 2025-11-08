@@ -29,6 +29,7 @@ interface AdminState {
   appointments: AdminAppointment[];
   loadingUsers: boolean;
   loadingAppointments: boolean;
+  creatingDoctor: boolean;
   updatingUserId: string | null;
   deletingUserId: string | null;
   error: string | null;
@@ -36,6 +37,7 @@ interface AdminState {
   fetchAppointments: () => Promise<void>;
   updateUserRole: (userId: string, role: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
+  createDoctor: (doctorData: any) => Promise<any>;
   clearError: () => void;
 }
 
@@ -67,6 +69,7 @@ const useAdminStore = create<AdminState>((set, get) => ({
   appointments: [],
   loadingUsers: false,
   loadingAppointments: false,
+  creatingDoctor: false,
   updatingUserId: null,
   deletingUserId: null,
   error: null,
@@ -154,6 +157,37 @@ const useAdminStore = create<AdminState>((set, get) => ({
       set({
         deletingUserId: null,
         error: error?.message || 'Failed to delete user.',
+      });
+      throw error;
+    }
+  },
+
+  createDoctor: async doctorData => {
+    set({ creatingDoctor: true, error: null });
+    try {
+      const response = await adminService.createDoctor(doctorData);
+      const createdDoctor = response?.data || response?.data?.data || response;
+      if (!createdDoctor) {
+        throw new Error('Failed to create doctor');
+      }
+
+      const mappedUser = createdDoctor.user ? mapUser(createdDoctor.user) : null;
+
+      set(state => ({
+        users: mappedUser
+          ? [
+              ...state.users.filter(existing => existing.id !== mappedUser.id),
+              mappedUser,
+            ]
+          : state.users,
+        creatingDoctor: false,
+      }));
+
+      return createdDoctor;
+    } catch (error: any) {
+      set({
+        creatingDoctor: false,
+        error: error?.message || 'Failed to create doctor.',
       });
       throw error;
     }

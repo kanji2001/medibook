@@ -60,6 +60,9 @@ exports.createDoctor = async (req, res, next) => {
   try {
     const {
       userId,
+      name,
+      email,
+      password,
       specialty,
       experience,
       location,
@@ -71,109 +74,183 @@ exports.createDoctor = async (req, res, next) => {
       specializations,
       insurances,
       image,
-      featured
+      featured,
+      avatar
     } = req.body;
 
-    // Check if user exists
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
+    if (!specialty || !experience || !location || !address || !phone || !about) {
+      return res.status(400).json({
         success: false,
-        message: 'User not found'
+        message:
+          'specialty, experience, location, address, phone, and about fields are required'
       });
     }
 
-    // Check if doctor profile already exists
-    let doctor = await Doctor.findOne({ user: userId });
-    if (doctor) {
+    const toArray = value => {
+      if (Array.isArray(value)) {
+        return value.filter(Boolean);
+      }
+      if (typeof value === 'string' && value.trim().length) {
+        return value
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+
+    let user;
+    let createdUser = false;
+
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+    } else {
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'name, email, and password are required when userId is not provided'
+        });
+      }
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'A user with this email already exists'
+        });
+      }
+
+      user = await User.create({
+        name,
+        email,
+        password,
+        role: 'doctor',
+        phone,
+        avatar: avatar || image || '',
+        specialty,
+        bio: about
+      });
+      createdUser = true;
+    }
+
+    // Ensure the user is marked as a doctor and sync profile fields
+    user.role = 'doctor';
+    if (avatar || image) {
+      user.avatar = avatar || image;
+    }
+    if (phone) {
+      user.phone = phone;
+    }
+    if (specialty) {
+      user.specialty = specialty;
+    }
+    if (about) {
+      user.bio = about;
+    }
+    await user.save();
+
+    // Prevent duplicate doctor profiles
+    const existingDoctor = await Doctor.findOne({ user: user._id });
+    if (existingDoctor) {
       return res.status(400).json({
         success: false,
         message: 'Doctor profile already exists for this user'
       });
     }
 
-    // Update user role to doctor
-    user.role = 'doctor';
-    await user.save();
-
-    // Create doctor profile
-    doctor = await Doctor.create({
-      user: userId,
-      specialty,
-      experience,
-      location,
-      address,
-      phone,
-      about,
-      education: education || [],
-      languages: languages || ['English'],
-      specializations: specializations || [],
-      insurances: insurances || [],
-      image,
-      featured: featured || false,
-      availability: {
-        status: 'available',
-        workingHours: [
-          { 
-            day: 'Monday', 
-            isWorking: true, 
-            timeSlots: [
-              { time: '9:00 AM', isBooked: false },
-              { time: '10:00 AM', isBooked: false },
-              { time: '11:00 AM', isBooked: false },
-              { time: '2:00 PM', isBooked: false },
-              { time: '3:00 PM', isBooked: false }
-            ]
-          },
-          { 
-            day: 'Tuesday', 
-            isWorking: true, 
-            timeSlots: [
-              { time: '9:00 AM', isBooked: false },
-              { time: '10:00 AM', isBooked: false },
-              { time: '11:00 AM', isBooked: false },
-              { time: '2:00 PM', isBooked: false },
-              { time: '3:00 PM', isBooked: false }
-            ]
-          },
-          { 
-            day: 'Wednesday', 
-            isWorking: true, 
-            timeSlots: [
-              { time: '9:00 AM', isBooked: false },
-              { time: '10:00 AM', isBooked: false },
-              { time: '11:00 AM', isBooked: false },
-              { time: '2:00 PM', isBooked: false },
-              { time: '3:00 PM', isBooked: false }
-            ]
-          },
-          { 
-            day: 'Thursday', 
-            isWorking: true, 
-            timeSlots: [
-              { time: '9:00 AM', isBooked: false },
-              { time: '10:00 AM', isBooked: false },
-              { time: '11:00 AM', isBooked: false },
-              { time: '2:00 PM', isBooked: false },
-              { time: '3:00 PM', isBooked: false }
-            ]
-          },
-          { 
-            day: 'Friday', 
-            isWorking: true, 
-            timeSlots: [
-              { time: '9:00 AM', isBooked: false },
-              { time: '10:00 AM', isBooked: false },
-              { time: '11:00 AM', isBooked: false },
-              { time: '2:00 PM', isBooked: false },
-              { time: '3:00 PM', isBooked: false }
-            ]
-          },
-          { day: 'Saturday', isWorking: false, timeSlots: [] },
-          { day: 'Sunday', isWorking: false, timeSlots: [] }
-        ]
+    let doctor;
+    try {
+      doctor = await Doctor.create({
+        user: user._id,
+        specialty,
+        experience,
+        location,
+        address,
+        phone,
+        about,
+        education: toArray(education),
+        languages: toArray(languages).length ? toArray(languages) : ['English'],
+        specializations: toArray(specializations),
+        insurances: toArray(insurances),
+        image,
+        featured: featured || false,
+        availability: {
+          status: 'available',
+          workingHours: [
+            {
+              day: 'Monday',
+              isWorking: true,
+              timeSlots: [
+                { time: '9:00 AM', isBooked: false },
+                { time: '10:00 AM', isBooked: false },
+                { time: '11:00 AM', isBooked: false },
+                { time: '2:00 PM', isBooked: false },
+                { time: '3:00 PM', isBooked: false }
+              ]
+            },
+            {
+              day: 'Tuesday',
+              isWorking: true,
+              timeSlots: [
+                { time: '9:00 AM', isBooked: false },
+                { time: '10:00 AM', isBooked: false },
+                { time: '11:00 AM', isBooked: false },
+                { time: '2:00 PM', isBooked: false },
+                { time: '3:00 PM', isBooked: false }
+              ]
+            },
+            {
+              day: 'Wednesday',
+              isWorking: true,
+              timeSlots: [
+                { time: '9:00 AM', isBooked: false },
+                { time: '10:00 AM', isBooked: false },
+                { time: '11:00 AM', isBooked: false },
+                { time: '2:00 PM', isBooked: false },
+                { time: '3:00 PM', isBooked: false }
+              ]
+            },
+            {
+              day: 'Thursday',
+              isWorking: true,
+              timeSlots: [
+                { time: '9:00 AM', isBooked: false },
+                { time: '10:00 AM', isBooked: false },
+                { time: '11:00 AM', isBooked: false },
+                { time: '2:00 PM', isBooked: false },
+                { time: '3:00 PM', isBooked: false }
+              ]
+            },
+            {
+              day: 'Friday',
+              isWorking: true,
+              timeSlots: [
+                { time: '9:00 AM', isBooked: false },
+                { time: '10:00 AM', isBooked: false },
+                { time: '11:00 AM', isBooked: false },
+                { time: '2:00 PM', isBooked: false },
+                { time: '3:00 PM', isBooked: false }
+              ]
+            },
+            { day: 'Saturday', isWorking: false, timeSlots: [] },
+            { day: 'Sunday', isWorking: false, timeSlots: [] }
+          ]
+        }
+      });
+    } catch (error) {
+      if (createdUser) {
+        await user.deleteOne();
       }
-    });
+      throw error;
+    }
+
+    await doctor.populate({ path: 'user', select: '-password' });
 
     res.status(201).json({
       success: true,

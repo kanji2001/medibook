@@ -162,6 +162,11 @@ export const adminService = {
     return response.data;
   },
 
+  createDoctor: async (doctorData: any) => {
+    const response = await api.post('/admin/doctors', doctorData);
+    return response.data;
+  },
+
   getAppointments: async () => {
     const response = await api.get('/admin/appointments');
     return response.data;

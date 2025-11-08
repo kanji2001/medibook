@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, Calendar, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, User, Calendar, LogOut, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const Navbar = () => {
@@ -101,6 +101,15 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-4">
           {isAuthenticated ? (
             <div className="flex items-center space-x-4">
+              {user?.role === 'admin' && (
+                <Link
+                  to="/admin-dashboard?addDoctor=1"
+                  className="btn-primary flex items-center gap-2 py-2 px-4"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Doctor</span>
+                </Link>
+              )}
               <Link 
                 to={getUserDashboardLink()} 
                 className="flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary"
@@ -186,6 +195,15 @@ const Navbar = () => {
           <div className="pt-4 flex flex-col space-y-4">
             {isAuthenticated ? (
               <>
+                {user?.role === 'admin' && (
+                  <Link
+                    to="/admin-dashboard?addDoctor=1"
+                    className="btn-primary py-3 flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Doctor</span>
+                  </Link>
+                )}
                 <Link to={getUserDashboardLink()} className="btn-primary py-3">
                   <User className="w-4 h-4 mr-2" />
                   <span>Dashboard</span>

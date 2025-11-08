@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import useAdminStore from '@/stores/adminStore';
@@ -12,6 +13,7 @@ import UserList from '@/components/admin/UserList';
 import AppointmentsPanel from '@/components/admin/AppointmentsPanel';
 import ReportsSection from '@/components/admin/ReportsSection';
 import SettingsPanel from '@/components/admin/SettingsPanel';
+import AddDoctorModal, { DoctorPayload } from '@/components/admin/AddDoctorModal';
 import { AdminSection, UserFilter } from '@/components/admin/types';
 import { AdminAppointment, AdminUser } from '@/stores/adminStore';
 
@@ -20,6 +22,9 @@ const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState<AdminSection>('users');
   const [activeUserFilter, setActiveUserFilter] = useState<UserFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDoctorOpen, setIsAddDoctorOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const {
     users,
@@ -29,6 +34,8 @@ const AdminDashboard = () => {
     fetchUsers,
     fetchAppointments,
     updateUserRole,
+    createDoctor,
+    creatingDoctor,
     error,
     clearError,
   } = useAdminStore(state => ({
@@ -39,6 +46,8 @@ const AdminDashboard = () => {
     fetchUsers: state.fetchUsers,
     fetchAppointments: state.fetchAppointments,
     updateUserRole: state.updateUserRole,
+    createDoctor: state.createDoctor,
+    creatingDoctor: state.creatingDoctor,
     error: state.error,
     clearError: state.clearError,
   }));
@@ -219,6 +228,42 @@ const AdminDashboard = () => {
     });
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('addDoctor') === '1') {
+      setActiveSection('users');
+      setIsAddDoctorOpen(true);
+      params.delete('addDoctor');
+      navigate(
+        {
+          pathname: location.pathname,
+          search: params.toString(),
+        },
+        { replace: true },
+      );
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  const handleCreateDoctor = async (payload: DoctorPayload) => {
+    try {
+      await createDoctor(payload);
+      toast({
+        title: 'Doctor Created',
+        description: `${payload.name} has been added successfully.`,
+      });
+      setIsAddDoctorOpen(false);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || err?.message || 'Failed to create doctor.';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw err;
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -236,8 +281,14 @@ const AdminDashboard = () => {
             <section className="flex-grow space-y-6">
               {activeSection === 'users' && (
                 <>
-                  <header className="flex justify-between items-center">
+                  <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h1 className="text-2xl font-bold">User Management</h1>
+                    <button
+                      onClick={() => setIsAddDoctorOpen(true)}
+                      className="btn-primary px-4 py-2 text-sm"
+                    >
+                      Add Doctor
+                    </button>
                   </header>
 
                   <UserStatsGrid
@@ -290,6 +341,12 @@ const AdminDashboard = () => {
         </div>
       </main>
       <Footer />
+      <AddDoctorModal
+        open={isAddDoctorOpen}
+        onClose={() => setIsAddDoctorOpen(false)}
+        onSubmit={handleCreateDoctor}
+        loading={creatingDoctor}
+      />
     </div>
   );
 };
