@@ -1,18 +1,11 @@
 
-import { ChevronDown, ChevronUp, Check, LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
-
-export interface ServiceItem {
-  id: string;
-  icon: LucideIcon;
-  title: string;
-  shortDescription: string;
-  longDescription: string;
-  benefits: string[];
-}
+import { Link } from 'react-router-dom';
+import type { ServiceItem as ServiceDetailItem } from './ServicesData';
 
 interface ServiceCardProps {
-  service: ServiceItem;
+  service: ServiceDetailItem;
 }
 
 const ServiceCard = ({ service }: ServiceCardProps) => {
@@ -26,6 +19,7 @@ const ServiceCard = ({ service }: ServiceCardProps) => {
   
   return (
     <div 
+      id={service.slug}
       className={`glass-card rounded-xl transition-all duration-300 ${
         isExpanded ? 'ring-2 ring-primary transform scale-[1.02]' : ''
       }`}
@@ -68,6 +62,14 @@ const ServiceCard = ({ service }: ServiceCardProps) => {
                 </li>
               ))}
             </ul>
+
+            <Link
+              to={`/services/${service.slug}`}
+              className="inline-flex items-center mt-6 text-sm font-medium text-primary hover:underline"
+            >
+              View full service details
+              <ArrowRight className="ml-1 w-4 h-4" />
+            </Link>
           </div>
         )}
       </div>
