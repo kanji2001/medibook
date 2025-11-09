@@ -153,57 +153,59 @@ const DoctorProfile = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-grow py-24">
-        <div className="container">
-          <div className="flex flex-col md:flex-row gap-8">
+      <main className="flex-grow py-16 sm:py-20 lg:py-24">
+        <div className="container px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
             {/* Doctor Details Section */}
-            <section className="w-full md:w-2/3 space-y-6">
-              <div className="glass-card rounded-xl p-6">
-                <div className="flex items-center mb-6">
-                  <div className="shrink-0 w-32 h-32 rounded-full overflow-hidden mr-6">
+            <section className="w-full lg:w-2/3 space-y-6">
+              <div className="glass-card rounded-xl p-5 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center mb-6 gap-4 sm:gap-6">
+                  <div className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden mx-auto sm:mx-0">
                     <img
                       src={doctor.image}
                       alt={doctor.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-semibold">{doctor.name}</h1>
-                    <p className="text-lg text-muted-foreground">{doctor.specialty}</p>
-                    <div className="flex items-center mt-2">
-                      <Star className="w-5 h-5 text-yellow-400 fill-yellow-400 mr-1" />
-                      <span className="font-medium">{(doctor.rating ?? 0).toFixed(1)}</span>
-                      <span className="text-muted-foreground ml-1">
+                  <div className="text-center sm:text-left">
+                    <h1 className="text-2xl sm:text-3xl font-semibold">{doctor.name}</h1>
+                    <p className="text-base sm:text-lg text-muted-foreground">{doctor.specialty}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-1 sm:gap-2 mt-3 sm:mt-2 text-sm sm:text-base">
+                      <div className="flex items-center justify-center sm:justify-start">
+                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400 mr-1" />
+                        <span className="font-medium">{(doctor.rating ?? 0).toFixed(1)}</span>
+                      </div>
+                      <span className="text-muted-foreground">
                         ({doctor.reviews ?? 0} reviews)
                       </span>
                     </div>
-                    <div className="flex items-center mt-2 text-muted-foreground">
+                    <div className="flex items-center justify-center sm:justify-start mt-3 sm:mt-2 text-muted-foreground text-sm sm:text-base">
                       <MapPin className="w-4 h-4 mr-2 text-primary" />
                       <span>{doctor.location}</span>
                     </div>
                     {doctor.address && (
-                      <div className="flex items-center mt-1 text-muted-foreground">
+                      <div className="mt-1 text-muted-foreground text-sm sm:text-base">
                         <span>{doctor.address}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
                     <h3 className="text-xl font-semibold mb-2">About</h3>
-                    <p className="text-muted-foreground">{doctor.about || 'Details coming soon.'}</p>
+                    <p className="text-muted-foreground leading-relaxed">{doctor.about || 'Details coming soon.'}</p>
                   </div>
 
                   <div>
                     <h3 className="text-xl font-semibold mb-2">
                       Working Hours
                     </h3>
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-muted-foreground text-sm sm:text-base">
                       <Calendar className="w-4 h-4 mr-2 text-primary" />
                       <span>{doctor.availability}</span>
                     </div>
-                    <div className="flex items-center text-muted-foreground mt-1">
+                    <div className="flex items-center text-muted-foreground mt-1 text-sm sm:text-base">
                       <Clock className="w-4 h-4 mr-2 text-primary" />
                       <span>{doctor.experience} years experience</span>
                     </div>
@@ -211,10 +213,10 @@ const DoctorProfile = () => {
                 </div>
               </div>
 
-              <div className="glass-card rounded-xl p-6">
+              <div className="glass-card rounded-xl p-5 sm:p-6">
                 <h3 className="text-xl font-semibold mb-4">Specializations & Services</h3>
                 {formattedSpecializations.length ? (
-                  <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                  <ul className="list-disc list-inside text-muted-foreground space-y-2 text-sm sm:text-base">
                     {formattedSpecializations.map((specialization, index) => (
                       <li key={index}>{specialization}</li>
                     ))}
@@ -224,11 +226,11 @@ const DoctorProfile = () => {
                 )}
               </div>
 
-              <div className="glass-card rounded-xl p-6 space-y-6">
+              <div className="glass-card rounded-xl p-5 sm:p-6 space-y-6">
                 <section>
                   <h3 className="text-xl font-semibold mb-2">Education</h3>
                   {formattedEducation.length ? (
-                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm sm:text-base">
                       {formattedEducation.map((item, idx) => (
                         <li key={idx}>{item}</li>
                       ))}
@@ -243,7 +245,7 @@ const DoctorProfile = () => {
                   {formattedLanguages.length ? (
                     <div className="flex flex-wrap gap-2">
                       {formattedLanguages.map((language, idx) => (
-                        <span key={idx} className="badge badge-outline">
+                        <span key={idx} className="badge badge-outline text-sm px-3 py-1">
                           {language}
                         </span>
                       ))}
@@ -256,7 +258,7 @@ const DoctorProfile = () => {
                 <section>
                   <h3 className="text-xl font-semibold mb-2">Insurance Accepted</h3>
                   {formattedInsurances.length ? (
-                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm sm:text-base">
                       {formattedInsurances.map((insurance, idx) => (
                         <li key={idx}>{insurance}</li>
                       ))}
@@ -279,8 +281,8 @@ const DoctorProfile = () => {
             </section>
 
             {/* Appointment Section */}
-            <section className="w-full md:w-1/3 space-y-6">
-              <div className="glass-card rounded-xl p-6">
+            <section className="w-full lg:w-1/3 space-y-6">
+              <div className="glass-card rounded-xl p-5 sm:p-6">
                 <h3 className="text-xl font-semibold mb-6">Book Appointment</h3>
 
                 {doctor && (
@@ -309,14 +311,14 @@ const DoctorProfile = () => {
                       <div className="mt-4">
                         <Link
                           to={`/appointment?doctorId=${doctor.id}&doctorName=${encodeURIComponent(doctor.name)}&doctorSpecialty=${encodeURIComponent(doctor.specialty)}&doctorImage=${encodeURIComponent(doctor.image)}`}
-                          className="btn-primary w-full"
+                          className="btn-primary w-full text-center"
                         >
                           Confirm Appointment
                         </Link>
                       </div>
                     ) : (
                       <div className="mt-4 space-y-3">
-                        <Link to="/login" className="btn-primary w-full">
+                        <Link to="/login" className="btn-primary w-full text-center">
                           Login to Book
                         </Link>
                         <p className="text-center text-sm text-muted-foreground">
@@ -328,7 +330,7 @@ const DoctorProfile = () => {
                 )}
               </div>
 
-              <div className="glass-card rounded-xl p-6">
+              <div className="glass-card rounded-xl p-5 sm:p-6">
                 <h3 className="text-xl font-semibold mb-4">Reviews</h3>
                 {reviews.length ? (
                   <div className="space-y-4">
