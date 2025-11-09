@@ -191,7 +191,7 @@ const useDoctorStore = create<DoctorStore>((set, get) => ({
     const { filters } = get();
     set({ loading: true, error: null });
     try {
-      const rawDoctors = await doctorService.getAllDoctors();
+      const rawDoctors = await doctorService.getAllDoctors(filters.specialty !== defaultDoctorFilters.specialty ? { specialty: filters.specialty } : {});
       const normalizedDoctors = rawDoctors.map((doctor: Doctor) => {
         const availabilityStatus =
           doctor.availabilityStatus ||

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import shallow from 'zustand/shallow';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import DoctorCard from '@/components/ui/DoctorCard';
@@ -34,20 +33,25 @@ const Doctors = () => {
   const { toast } = useToast();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const { filteredDoctors, filters, loading, error, lastFetchedAt } = useDoctorStore(
-    state => ({
-      filteredDoctors: state.filteredDoctors,
-      filters: state.filters,
-      loading: state.loading,
-      error: state.error,
-      lastFetchedAt: state.lastFetchedAt,
-    }),
-    shallow,
-  );
-
-  const fetchDoctors = useDoctorStore(state => state.fetchDoctors);
-  const setFilters = useDoctorStore(state => state.setFilters);
-  const resetFilters = useDoctorStore(state => state.resetFilters);
+  const {
+    filteredDoctors,
+    filters,
+    loading,
+    error,
+    lastFetchedAt,
+    fetchDoctors,
+    setFilters,
+    resetFilters,
+  } = useDoctorStore(state => ({
+    filteredDoctors: state.filteredDoctors,
+    filters: state.filters,
+    loading: state.loading,
+    error: state.error,
+    lastFetchedAt: state.lastFetchedAt,
+    fetchDoctors: state.fetchDoctors,
+    setFilters: state.setFilters,
+    resetFilters: state.resetFilters,
+  }));
 
   useEffect(() => {
     if (!lastFetchedAt) {
@@ -92,15 +96,6 @@ const Doctors = () => {
       setFilters(incoming);
     }
   }, [location.search, filters, setFilters]);
-
-  useEffect(() => {
-    const nextQuery = formatFiltersForUrl(filters);
-    const current = location.search.startsWith('?') ? location.search.slice(1) : location.search;
-
-    if (nextQuery !== current) {
-      navigate(`/doctors${nextQuery ? `?${nextQuery}` : ''}`, { replace: true });
-    }
-  }, [filters, navigate, location.search]);
 
   const handleSpecialtySelect = (specialty: string) => {
     setFilters({ specialty });

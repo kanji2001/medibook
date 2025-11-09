@@ -172,6 +172,8 @@ const importData = async () => {
         insurances: doctor.doctorInfo.insurances,
         featured: doctor.doctorInfo.featured,
         image: doctor.doctorInfo.image,
+        applicationStatus: 'approved',
+        approvedAt: new Date(),
         availability: {
           status: 'available',
           workingHours: [

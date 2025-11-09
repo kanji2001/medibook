@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import shallow from 'zustand/shallow';
+import { shallow } from 'zustand/shallow';
 import useAuthStore, { Availability, AuthUser, RegisterPayload, UserRole } from '@/stores/authStore';
 
 interface AuthContextType {

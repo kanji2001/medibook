@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Star } from 'lucide-react';
 import { fetchDoctorById } from '@/services/api';
@@ -7,14 +7,47 @@ import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import AppointmentCalendar from '@/components/ui/AppointmentCalendar';
+import axios from 'axios';
+
+interface DoctorProfileData {
+  id: string;
+  name: string;
+  specialty: string;
+  image: string;
+  rating: number;
+  reviews: number;
+  location: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  availability: string;
+  experience: number;
+  about?: string;
+  education?: string[];
+  languages?: string[];
+  specializations?: string[];
+  insurances?: string[];
+  featured?: boolean;
+  reviewDetails?: Array<{
+    id: string;
+    name: string;
+    date: string;
+    rating: number;
+    comment?: string;
+  }>;
+}
 
 const DoctorProfile = () => {
   const { id } = useParams();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [doctor, setDoctor] = useState<any>(null);
+  const [doctor, setDoctor] = useState<DoctorProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDateTime, setSelectedDateTime] = useState<{ date: Date; time: string } | null>(null);
+  const [errorState, setErrorState] = useState<{ status: number | null; message: string | null }>({
+    status: null,
+    message: null,
+  });
 
   useEffect(() => {
     const loadDoctor = async () => {
@@ -22,12 +55,39 @@ const DoctorProfile = () => {
         try {
           const fetchedDoctor = await fetchDoctorById(id);
           setDoctor(fetchedDoctor);
+          setErrorState({ status: null, message: null });
         } catch (error) {
-          toast({
-            title: 'Error',
-            description: 'Failed to load doctor details.',
-            variant: 'destructive',
-          });
+          if (axios.isAxiosError(error)) {
+            const status = error.response?.status ?? null;
+            let message = error.response?.data?.message || 'Failed to load doctor details.';
+
+            if (status === 403) {
+              message = 'This doctor profile is not yet approved and is currently unavailable.';
+            } else if (status === 404) {
+              message = 'The doctor you are looking for does not exist.';
+            }
+
+            setErrorState({ status, message });
+            toast({
+              title: status === 403 ? 'Profile Unavailable' : 'Error',
+              description: message,
+              variant: status === 403 ? 'default' : 'destructive',
+            });
+          } else if (error instanceof Error) {
+            setErrorState({ status: null, message: error.message });
+            toast({
+              title: 'Error',
+              description: error.message,
+              variant: 'destructive',
+            });
+          } else {
+            setErrorState({ status: null, message: 'Failed to load doctor details.' });
+            toast({
+              title: 'Error',
+              description: 'Failed to load doctor details.',
+              variant: 'destructive',
+            });
+          }
         } finally {
           setLoading(false);
         }
@@ -41,10 +101,34 @@ const DoctorProfile = () => {
     setSelectedDateTime({ date, time });
   };
 
+  const formattedEducation = useMemo(() => doctor?.education ?? [], [doctor]);
+  const formattedLanguages = useMemo(() => doctor?.languages ?? [], [doctor]);
+  const formattedSpecializations = useMemo(() => doctor?.specializations ?? [], [doctor]);
+  const formattedInsurances = useMemo(() => doctor?.insurances ?? [], [doctor]);
+  const reviews = useMemo(() => doctor?.reviewDetails ?? [], [doctor]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (errorState.message) {
+    const isPendingProfile = errorState.status === 403;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md px-6 py-8 glass-card rounded-xl space-y-4">
+          <h2 className="text-2xl font-semibold">
+            {isPendingProfile ? 'Doctor Profile Unavailable' : 'Doctor Not Found'}
+          </h2>
+          <p className="text-muted-foreground">{errorState.message}</p>
+          <Link to="/doctors" className="btn-primary inline-flex justify-center">
+            Back to Doctors
+          </Link>
+        </div>
       </div>
     );
   }
@@ -88,22 +172,27 @@ const DoctorProfile = () => {
                     <p className="text-lg text-muted-foreground">{doctor.specialty}</p>
                     <div className="flex items-center mt-2">
                       <Star className="w-5 h-5 text-yellow-400 fill-yellow-400 mr-1" />
-                      <span className="font-medium">{doctor.rating.toFixed(1)}</span>
+                      <span className="font-medium">{(doctor.rating ?? 0).toFixed(1)}</span>
                       <span className="text-muted-foreground ml-1">
-                        ({doctor.reviews} reviews)
+                        ({doctor.reviews ?? 0} reviews)
                       </span>
                     </div>
                     <div className="flex items-center mt-2 text-muted-foreground">
                       <MapPin className="w-4 h-4 mr-2 text-primary" />
                       <span>{doctor.location}</span>
                     </div>
+                    {doctor.address && (
+                      <div className="flex items-center mt-1 text-muted-foreground">
+                        <span>{doctor.address}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-xl font-semibold mb-2">About</h3>
-                    <p className="text-muted-foreground">{doctor.bio}</p>
+                    <p className="text-muted-foreground">{doctor.about || 'Details coming soon.'}</p>
                   </div>
 
                   <div>
@@ -123,13 +212,69 @@ const DoctorProfile = () => {
               </div>
 
               <div className="glass-card rounded-xl p-6">
-                <h3 className="text-xl font-semibold mb-4">Services</h3>
-                <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                  {(doctor.services ?? []).map((service: string, index: number) => (
-                    <li key={index}>{service}</li>
-                  ))}
-                </ul>
+                <h3 className="text-xl font-semibold mb-4">Specializations & Services</h3>
+                {formattedSpecializations.length ? (
+                  <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                    {formattedSpecializations.map((specialization, index) => (
+                      <li key={index}>{specialization}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">Specializations will be updated soon.</p>
+                )}
+              </div>
 
+              <div className="glass-card rounded-xl p-6 space-y-6">
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">Education</h3>
+                  {formattedEducation.length ? (
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {formattedEducation.map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">Education details will be updated soon.</p>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">Languages</h3>
+                  {formattedLanguages.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {formattedLanguages.map((language, idx) => (
+                        <span key={idx} className="badge badge-outline">
+                          {language}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">Languages will be updated soon.</p>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-semibold mb-2">Insurance Accepted</h3>
+                  {formattedInsurances.length ? (
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {formattedInsurances.map((insurance, idx) => (
+                        <li key={idx}>{insurance}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">Insurance information will be updated soon.</p>
+                  )}
+                </section>
+
+                {(doctor.phone || doctor.email) && (
+                  <section>
+                    <h3 className="text-xl font-semibold mb-2">Contact Information</h3>
+                    <div className="space-y-1 text-muted-foreground">
+                      {doctor.phone && <p>Phone: {doctor.phone}</p>}
+                      {doctor.email && <p>Email: {doctor.email}</p>}
+                    </div>
+                  </section>
+                )}
               </div>
             </section>
 
@@ -185,32 +330,33 @@ const DoctorProfile = () => {
 
               <div className="glass-card rounded-xl p-6">
                 <h3 className="text-xl font-semibold mb-4">Reviews</h3>
-                <div className="space-y-4">
-                  {(doctor.reviewsData ?? []).map((review: any, index: number) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
-                            <img
-                              src={review.userImage}
-                              alt={review.userName}
-                              className="w-full h-full object-cover"
-                            />
+                {reviews.length ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium">{review.name}</div>
+                            <div className="flex items-center text-xs text-muted-foreground mt-1">
+                              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-1" />
+                              <span>{review.rating.toFixed(1)}</span>
+                            </div>
                           </div>
-                          <div className="text-sm font-medium">
-                            {review.userName}
+                          <div className="text-xs text-muted-foreground">
+                            {review.date}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {review.date}
-                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground">
+                            {review.comment}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {review.comment}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No reviews yet.</p>
+                )}
               </div>
             </section>
           </div>

@@ -82,7 +82,7 @@ const Login = () => {
     }
 
     alreadyRedirectedRef.current = true;
-    const target = getDashboardPath(result.role || user?.role);
+    const target = '/';
 
     toast({
       title: 'Login Successful',
