@@ -36,17 +36,17 @@ const Hero = () => {
       ))}
 
       {/* Content */}
-      <div className="container relative z-10 pt-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8 animate-fade-in">
+      <div className="container relative z-10 pt-20 pb-16 md:pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="space-y-8 animate-fade-in max-w-2xl">
             <h1 className="heading-xl text-balance animate-fade-in">
               Your Health, <span className="text-gradient">Our Priority</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-md mt-4 animate-fade-in">
+            <p className="text-base md:text-lg text-muted-foreground max-w-xl mt-4 animate-fade-in">
               Book appointments with top specialists effortlessly. Quality healthcare is just a few clicks away.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 animate-fade-in">
               <Link to="/doctors" className="btn-primary">
                 Find a Doctor
                 <ChevronRight className="ml-2 w-4 h-4" />
@@ -58,8 +58,8 @@ const Hero = () => {
           </div>
 
           {/* Quick Appointment Form */}
-          <div className="hidden lg:block animate-fade-in">
-            <div className="glass-card rounded-2xl p-6 shadow-xl max-w-md mx-auto">
+          <div className="hidden md:flex justify-center lg:justify-end animate-fade-in">
+            <div className="glass-card rounded-2xl p-6 shadow-xl w-full max-w-md mx-auto">
               <h3 className="text-lg font-semibold mb-4">Quick Appointment</h3>
               <QuickAppointmentForm />
             </div>

@@ -172,8 +172,8 @@ const Index = () => {
               <div className="relative">
                 <div className="absolute -inset-4 bg-gradient-to-tr from-primary/20 to-blue-400/20 rounded-2xl blur-3xl opacity-70"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1638202993928-7d113vlipde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80" 
-                  alt="Medical specialties" 
+                  src="/logo.png" 
+                  alt="Hospital team reviewing appointments" 
                   className="relative rounded-xl w-full h-auto object-cover shadow-lg"
                 />
               </div>
