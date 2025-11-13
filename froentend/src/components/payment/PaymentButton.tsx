@@ -39,9 +39,8 @@ const resolveBackendBaseUrl = () => {
     return normalizeBaseUrl(configuredBase);
   }
 
-  throw new Error(
-    'VITE_API_BASE_URL is not configured. Please set it to your backend origin, e.g. http://localhost:5000',
-  );
+  // Fallback to localhost for development
+  return 'http://localhost:5000';
 };
 
 const getPaymentApiBase = () => `${resolveBackendBaseUrl()}/api`;

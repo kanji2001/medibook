@@ -36,8 +36,9 @@ export interface AppointmentResponse {
 }
 
 // Create axios instance with the base URL and auth token
+// VITE_API_BASE_URL should be the base URL without /api (e.g., http://localhost:5000)
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api',
   headers: {
     'Content-Type': 'application/json',
   },

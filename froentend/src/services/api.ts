@@ -3,7 +3,8 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
 // Base API configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+// VITE_API_BASE_URL should be the base URL without /api (e.g., http://localhost:5000)
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api';
 
 // Create axios instance with base configuration
 const api = axios.create({

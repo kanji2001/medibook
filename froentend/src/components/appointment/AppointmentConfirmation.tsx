@@ -33,8 +33,9 @@ const AppointmentConfirmation = ({
 }: AppointmentConfirmationProps) => {
   const { toast } = useToast();
   const backendBaseUrl = useMemo(() => {
-    const base = import.meta.env.VITE_API_BASE_URL;
-    return base ? base.replace(/\/+$/, '') : '';
+    // VITE_API_BASE_URL should be the base URL without /api (e.g., http://localhost:5000)
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    return base.replace(/\/+$/, '');
   }, []);
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState(false);
@@ -43,10 +44,6 @@ const AppointmentConfirmation = ({
     async (options: { inline: boolean }) => {
       if (!appointmentId) {
         throw new Error('Appointment ID missing.');
-      }
-
-      if (!backendBaseUrl) {
-        throw new Error('Backend URL is not configured.');
       }
 
       const url = `${backendBaseUrl}/api/appointments/${appointmentId}/receipt${options.inline ? '?inline=true' : ''}`;
